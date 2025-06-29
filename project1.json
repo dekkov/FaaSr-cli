@@ -4,7 +4,8 @@
             "FaaSType": "GitHubActions",
             "UserName": "dekkov",
             "ActionRepoName": "FaaSr-cli",
-            "Branch": "main"
+            "Branch": "main",
+            "Token": "My_GitHub_Account_TOKEN"
         },
         "My_Lambda_Account": {
             "FaaSType": "Lambda",
