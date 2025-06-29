@@ -1,7 +1,7 @@
 {
     "ComputeServers": {
         "My_GitHub_Account": {
-            "FaaSType": "GithubActions",
+            "FaaSType": "GitHubActions",
             "UserName": "dekkov",
             "ActionRepoName": "FaaSr-cli",
             "Branch": "main"
