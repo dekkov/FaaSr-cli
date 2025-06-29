@@ -114,7 +114,7 @@ def create_secret_payload(workflow_data):
     # Create the outer payload structure
     secret_payload = {
         "github_token": github_token,
-        "SECRET_PAYLOAD": json.dumps(inner_payload)  # JSON string for GitHub secret
+        "SECRET_PAYLOAD": inner_payload  # JSON string for GitHub secret
     }
     
     return json.dumps(secret_payload)
