@@ -99,10 +99,8 @@ def create_secret_payload(workflow_data):
     lambda_access_key = os.getenv('AWS_ACCESS_KEY_ID', '')
     lambda_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY', '')
     
-
-    
-    # Create the inner payload structure with credentials and complete workflow data
-    inner_payload = {
+    # Create the credentials payload structure
+    credentials_payload = {
         "My_GitHub_Account_TOKEN": github_token,
         "My_Minio_Bucket_ACCESS_KEY": minio_access_key,
         "My_Minio_Bucket_SECRET_KEY": minio_secret_key,
@@ -111,13 +109,14 @@ def create_secret_payload(workflow_data):
         "My_Lambda_Account_SECRET_KEY": lambda_secret_key,
     }
     
-    # Create the outer payload structure
-    secret_payload = {
-        "github_token": github_token,
-        "SECRET_PAYLOAD": json.dumps(inner_payload)  # JSON string for GitHub secret
-    }
+    # Create the complete workflow payload by merging the original workflow with credentials
+    # Remove the _workflow_file field as it's not part of the FaaSr schema
+    complete_payload = workflow_data.copy()
+    if '_workflow_file' in complete_payload:
+        del complete_payload['_workflow_file']
+    complete_payload.update(credentials_payload)
     
-    return json.dumps(secret_payload)
+    return json.dumps(complete_payload)
 
 def deploy_to_github(workflow_data):
     github_token = get_github_token()
@@ -158,9 +157,7 @@ def deploy_to_github(workflow_data):
         }
 
         vars = {
-            "PAYLOAD_REPO": repo_name + "/" + json_prefix + ".json",
-            "SECRET_PAYLOAD": create_secret_payload(workflow_data)
-
+            "PAYLOAD_REPO": repo_name + "/" + json_prefix + ".json"
         }
         ensure_github_secrets_and_vars(repo, required_secrets, vars, github_token)
         
