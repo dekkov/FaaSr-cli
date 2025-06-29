@@ -99,6 +99,9 @@ def create_secret_payload(workflow_data):
     lambda_access_key = os.getenv('AWS_ACCESS_KEY_ID', '')
     lambda_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY', '')
     
+    # Create a copy of workflow data without the temporary file path
+    workflow_copy = workflow_data.copy()
+
     
     # Create the inner payload structure with credentials and complete workflow data
     inner_payload = {
@@ -108,12 +111,13 @@ def create_secret_payload(workflow_data):
         "My_OW_Account_API_KEY": ow_api_key,
         "My_Lambda_Account_ACCESS_KEY": lambda_access_key,
         "My_Lambda_Account_SECRET_KEY": lambda_secret_key,
+        **workflow_copy  # Include all workflow data (DataStores, ComputeServers, etc.)
     }
     
     # Create the outer payload structure
     secret_payload = {
         "github_token": github_token,
-        "SECRET_PAYLOAD": inner_payload
+        "SECRET_PAYLOAD": json.dumps(inner_payload)  # JSON string for GitHub secret
     }
     
     return json.dumps(secret_payload)
