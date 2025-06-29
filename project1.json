@@ -28,7 +28,7 @@
                 "output1": "sample1.csv",
                 "output2": "sample2.csv"
             },
-            "InvokeNext": "sum"
+            "InvokeNext": "sum_github"
         },
         "start_lambda": {
             "FunctionName": "create_sample_data",
@@ -38,7 +38,7 @@
                 "output1": "sample1.csv",
                 "output2": "sample2.csv"
             },
-            "InvokeNext": "sum"
+            "InvokeNext": "sum_lambda"
         },
         "sum_github": {
             "FunctionName": "compute_sum",
@@ -77,7 +77,7 @@
         "create_sample_data": "FaaSr/FaaSr-tutorial",
         "compute_sum": "FaaSr/FaaSr-tutorial"
     },
-    "FunctionInvoke": "start",
+    "FunctionInvoke": "start_github",
     "InvocationID": "",
     "FaaSrLog": "FaaSrLog",
     "LoggingDataStore": "My_Minio_Bucket",
