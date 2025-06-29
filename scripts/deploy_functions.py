@@ -33,7 +33,7 @@ def get_github_token():
     # Get GitHub PAT from environment variable
     token = os.getenv('GITHUB_TOKEN')
     if not token:
-        print("Error: PAT environment variable not set")
+        print("Error: GITHUB_TOKEN environment variable not set")
         sys.exit(1)
     return token
 
@@ -99,19 +99,21 @@ def create_secret_payload(workflow_data):
     lambda_access_key = os.getenv('AWS_ACCESS_KEY_ID', '')
     lambda_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY', '')
     
-    # Create a copy of workflow data without the temporary file path
-    workflow_copy = workflow_data.copy()
-
     
-    # Create the payload structure with credentials and complete workflow data
-    secret_payload = {
+    # Create the inner payload structure with credentials and complete workflow data
+    inner_payload = {
         "My_GitHub_Account_TOKEN": github_token,
         "My_Minio_Bucket_ACCESS_KEY": minio_access_key,
         "My_Minio_Bucket_SECRET_KEY": minio_secret_key,
         "My_OW_Account_API_KEY": ow_api_key,
         "My_Lambda_Account_ACCESS_KEY": lambda_access_key,
         "My_Lambda_Account_SECRET_KEY": lambda_secret_key,
-        **workflow_copy  # Include all workflow data
+    }
+    
+    # Create the outer payload structure
+    secret_payload = {
+        "github_token": github_token,
+        "SECRET_PAYLOAD": json.dumps(inner_payload)
     }
     
     return json.dumps(secret_payload)
