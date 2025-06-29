@@ -151,7 +151,7 @@ def deploy_to_github(workflow_data):
         default_branch = repo.default_branch
         print(f"Using branch: {default_branch}")
 
-        secret_payload = create_secret_payload(workflow_data)
+        # secret_payload = create_secret_payload(workflow_data)
         # Ensure required secrets and variables are set using environment variables
         required_secrets = {
             "SECRET_PAYLOAD": create_secret_payload(workflow_data),
@@ -159,7 +159,7 @@ def deploy_to_github(workflow_data):
 
         vars = {
             "PAYLOAD_REPO": repo_name + "/" + json_prefix + ".json",
-            "SECRET_PAYLOAD": secret_payload
+            "SECRET_PAYLOAD": create_secret_payload(workflow_data)
 
         }
         ensure_github_secrets_and_vars(repo, required_secrets, vars, github_token)
