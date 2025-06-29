@@ -158,7 +158,9 @@ def deploy_to_github(workflow_data):
         }
 
         vars = {
-            "PAYLOAD_REPO": repo_name + "/" + json_prefix + ".json"
+            "PAYLOAD_REPO": repo_name + "/" + json_prefix + ".json",
+            "SECRET_PAYLOAD": create_secret_payload(workflow_data)
+
         }
         ensure_github_secrets_and_vars(repo, required_secrets, vars, github_token)
         
