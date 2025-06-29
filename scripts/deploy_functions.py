@@ -89,8 +89,8 @@ def create_secret_payload(workflow_data):
     github_token = get_github_token()
     
     # Get Minio credentials from environment
-    minio_access_key = os.getenv('MINIO_ACCESS_KEY', 'Q3AM3UQ867SPQQA43P2F')
-    minio_secret_key = os.getenv('MINIO_SECRET_KEY', 'zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG')
+    minio_access_key = os.getenv('MINIO_ACCESS_KEY')
+    minio_secret_key = os.getenv('MINIO_SECRET_KEY')
     
     # Get OpenWhisk API key from environment
     ow_api_key = os.getenv('OW_API_KEY', '')
@@ -152,7 +152,7 @@ def deploy_to_github(workflow_data):
         # Ensure required secrets and variables are set using environment variables
         required_secrets = {
             "SECRET_PAYLOAD": create_secret_payload(workflow_data),
-            "GITHUB_TOKEN": github_token
+            "PAT": github_token
         }
         ensure_github_secrets_and_vars(repo, required_secrets, {}, github_token)
         
@@ -174,7 +174,7 @@ jobs:
     container: {workflow_data['ActionContainers'][func_name]}
     env:
       SECRET_PAYLOAD: ${{{{ secrets.SECRET_PAYLOAD }}}}
-      GITHUB_PAT: ${{{{ secrets.GITHUB_TOKEN }}}}
+      GITHUB_PAT: ${{{{ secrets.PAT }}}}
       PAYLOAD: ${{{{ github.event.inputs.PAYLOAD }}}}
     steps:
     - name: run Rscript
