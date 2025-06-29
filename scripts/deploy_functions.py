@@ -31,7 +31,7 @@ def read_workflow_file(file_path):
 
 def get_github_token():
     # Get GitHub PAT from environment variable
-    token = os.getenv('PAT')
+    token = os.getenv('GITHUB_TOKEN')
     if not token:
         print("Error: PAT environment variable not set")
         sys.exit(1)
@@ -80,6 +80,42 @@ def ensure_github_secrets_and_vars(repo, required_secrets, required_vars, github
     for var_name, var_value in required_vars.items():
         set_github_variable(repo.full_name, var_name, var_value, github_token)
 
+def create_secret_payload(workflow_data):
+    """
+    Create a secret payload that combines all necessary credentials and the complete workflow configuration.
+    This payload will be stored as a GitHub secret and used by the deployed functions.
+    """
+    # Get GitHub token
+    github_token = get_github_token()
+    
+    # Get Minio credentials from environment
+    minio_access_key = os.getenv('MINIO_ACCESS_KEY', 'Q3AM3UQ867SPQQA43P2F')
+    minio_secret_key = os.getenv('MINIO_SECRET_KEY', 'zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG')
+    
+    # Get OpenWhisk API key from environment
+    ow_api_key = os.getenv('OW_API_KEY', '')
+    
+    # Get Lambda credentials from environment
+    lambda_access_key = os.getenv('AWS_ACCESS_KEY_ID', '')
+    lambda_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY', '')
+    
+    # Create a copy of workflow data without the temporary file path
+    workflow_copy = workflow_data.copy()
+
+    
+    # Create the payload structure with credentials and complete workflow data
+    secret_payload = {
+        "My_GitHub_Account_TOKEN": github_token,
+        "My_Minio_Bucket_ACCESS_KEY": minio_access_key,
+        "My_Minio_Bucket_SECRET_KEY": minio_secret_key,
+        "My_OW_Account_API_KEY": ow_api_key,
+        "My_Lambda_Account_ACCESS_KEY": lambda_access_key,
+        "My_Lambda_Account_SECRET_KEY": lambda_secret_key,
+        **workflow_copy  # Include all workflow data
+    }
+    
+    return json.dumps(secret_payload)
+
 def deploy_to_github(workflow_data):
     github_token = get_github_token()
     g = Github(github_token)
@@ -115,8 +151,8 @@ def deploy_to_github(workflow_data):
         
         # Ensure required secrets and variables are set using environment variables
         required_secrets = {
-            "SECRET_PAYLOAD": json.dumps(github_token),
-            "PAT": github_token
+            "SECRET_PAYLOAD": create_secret_payload(workflow_data),
+            "GITHUB_TOKEN": github_token
         }
         ensure_github_secrets_and_vars(repo, required_secrets, {}, github_token)
         
@@ -138,7 +174,7 @@ jobs:
     container: {workflow_data['ActionContainers'][func_name]}
     env:
       SECRET_PAYLOAD: ${{{{ secrets.SECRET_PAYLOAD }}}}
-      GITHUB_PAT: ${{{{ secrets.PAT }}}}
+      GITHUB_PAT: ${{{{ secrets.GITHUB_TOKEN }}}}
       PAYLOAD: ${{{{ github.event.inputs.PAYLOAD }}}}
     steps:
     - name: run Rscript
