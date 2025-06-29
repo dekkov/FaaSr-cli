@@ -175,13 +175,12 @@ jobs:
     env:
       SECRET_PAYLOAD: ${{{{ secrets.SECRET_PAYLOAD }}}}
       GITHUB_PAT: ${{{{ secrets.PAT }}}}
-      PAYLOAD_REPO: {repo}
       PAYLOAD: ${{{{ github.event.inputs.PAYLOAD }}}}
     steps:
     - name: run Rscript
       run: |
         cd /action
-        Rscript faasr_{func_name}_invoke_github-actions.R
+        Rscript faasr_start_invoke_github-actions.R
 """
             
             # Create or update the workflow file
