@@ -80,7 +80,7 @@ def ensure_github_secrets_and_vars(repo, required_secrets, required_vars, github
     for var_name, var_value in required_vars.items():
         set_github_variable(repo.full_name, var_name, var_value, github_token)
 
-def create_secret_payload():
+def create_secret_payload(workflow_data):
     """
     Create a secret payload that combines all necessary credentials and the complete workflow configuration.
     This payload will be stored as a GitHub secret and used by the deployed functions.
@@ -99,25 +99,23 @@ def create_secret_payload():
     lambda_access_key = os.getenv('AWS_ACCESS_KEY_ID', '')
     lambda_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY', '')
     
-
+    # Create the complete workflow payload by merging the original workflow with credentials
+    # Remove the _workflow_file field as it's not part of the FaaSr schema
+    complete_payload = workflow_data.copy()
+    if '_workflow_file' in complete_payload:
+        del complete_payload['_workflow_file']
     
-    # Create the inner payload structure with credentials and complete workflow data
-    inner_payload = {
+    # Add credentials to the payload
+    complete_payload.update({
         "My_GitHub_Account_TOKEN": github_token,
         "My_Minio_Bucket_ACCESS_KEY": minio_access_key,
         "My_Minio_Bucket_SECRET_KEY": minio_secret_key,
         "My_OW_Account_API_KEY": ow_api_key,
         "My_Lambda_Account_ACCESS_KEY": lambda_access_key,
         "My_Lambda_Account_SECRET_KEY": lambda_secret_key,
-    }
+    })
     
-    # Create the outer payload structure
-    secret_payload = {
-        "github_token": github_token,
-        "SECRET_PAYLOAD": inner_payload  # Direct object, not JSON string
-    }
-    
-    return json.dumps(secret_payload)
+    return json.dumps(complete_payload)
 
 def deploy_to_github(workflow_data):
     github_token = get_github_token()
@@ -152,10 +150,10 @@ def deploy_to_github(workflow_data):
         default_branch = repo.default_branch
         print(f"Using branch: {default_branch}")
         
-        secret_payload = create_secret_payload()
+        secret_payload = create_secret_payload(workflow_data)
         # Ensure required secrets and variables are set using environment variables
         required_secrets = {
-            "SECRET_PAYLOAD": str(secret_payload),
+            "SECRET_PAYLOAD": secret_payload,
         }
 
         vars = {
