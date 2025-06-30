@@ -18,7 +18,7 @@
         }
     },
     "FunctionList": {
-        "payload_aws_start": {
+        "start": {
             "FunctionName": "create_sample_data",
             "FaaSServer": "My_Lambda_Account",
             "Arguments": {
@@ -26,7 +26,7 @@
                 "output1": "sample1.csv",
                 "output2": "sample2.csv"
             },
-            "InvokeNext": []
+            "InvokeNext": "sum"
         },
         "sum": {
             "FunctionName": "compute_sum",
@@ -46,7 +46,7 @@
         "create_sample_data": "FaaSr/FaaSr-tutorial",
         "compute_sum": "FaaSr/FaaSr-tutorial"
     },
-    "FunctionInvoke": "payload_aws_start",
+    "FunctionInvoke": "start",
     "InvocationID": "",
     "FaaSrLog": "FaaSrLog",
     "LoggingDataStore": "My_Minio_Bucket",
