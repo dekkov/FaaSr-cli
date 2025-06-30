@@ -117,7 +117,7 @@ def create_secret_payload():
         "SECRET_PAYLOAD": inner_payload  # Direct object, not JSON string
     }
     
-    return json.dumps(secret_payload)
+    return secret_payload
 
 def deploy_to_github(workflow_data):
     github_token = get_github_token()
