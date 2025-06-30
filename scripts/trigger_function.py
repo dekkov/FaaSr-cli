@@ -124,13 +124,6 @@ def trigger_lambda(workflow_data, function_name):
     json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
     lambda_function_name = f"{json_prefix}_{function_name}"
     
-    # Debug output
-    print(f"Debug: JSON file: {workflow_file}")
-    print(f"Debug: JSON prefix: {json_prefix}")
-    print(f"Debug: Function name: {function_name}")
-    print(f"Debug: Lambda function name: {lambda_function_name}")
-    print(f"Debug: AWS Region: {aws_region}")
-    print(f"Debug: AWS Access Key: {aws_access_key[:8] if aws_access_key else 'None'}...")
     
     # Validate credentials
     if not aws_access_key or not aws_secret_key:
@@ -142,7 +135,15 @@ def trigger_lambda(workflow_data, function_name):
     payload = workflow_data.copy()
     if '_workflow_file' in payload:
         del payload['_workflow_file']
-    payload.update(get_credentials())
+    
+    credentials = get_credentials()
+    payload.update(credentials)
+    
+    # Debug: Show what credentials are being sent (masked for security)
+    print(f"Debug: MinIO Access Key: {credentials.get('My_Minio_Bucket_ACCESS_KEY', 'None')[:8] if credentials.get('My_Minio_Bucket_ACCESS_KEY') else 'None'}...")
+    print(f"Debug: MinIO Secret Key: {'*' * 8 if credentials.get('My_Minio_Bucket_SECRET_KEY') else 'None'}")
+    print(f"Debug: MinIO Endpoint: {payload['DataStores']['My_Minio_Bucket']['Endpoint']}")
+    print(f"Debug: MinIO Bucket: {payload['DataStores']['My_Minio_Bucket']['Bucket']}")
     
     # Create Lambda client
     try:
