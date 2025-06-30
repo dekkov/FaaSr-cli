@@ -107,6 +107,33 @@ def trigger_github_actions(workflow_data, function_name):
         print(f"Error triggering GitHub Actions workflow: {str(e)}")
         sys.exit(1)
 
+
+def create_secret_payload(workflow_data):
+    """
+    Create a secret payload that combines all necessary credentials and the complete workflow configuration.
+    This payload will be stored as a GitHub secret and used by the deployed functions.
+    """
+    # Get all required credentials
+    credentials = {
+        "My_GitHub_Account_TOKEN": get_github_token(),
+        "My_Minio_Bucket_ACCESS_KEY": os.getenv('MINIO_ACCESS_KEY'),
+        "My_Minio_Bucket_SECRET_KEY": os.getenv('MINIO_SECRET_KEY'),
+        "My_OW_Account_API_KEY": os.getenv('OW_API_KEY', ''),
+        "My_Lambda_Account_ACCESS_KEY": os.getenv('AWS_ACCESS_KEY_ID', ''),
+        "My_Lambda_Account_SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY', ''),
+    }
+    
+    # Create the complete workflow payload by merging the original workflow with credentials
+    # Remove the _workflow_file field as it's not part of the FaaSr schema
+    complete_payload = workflow_data.copy()
+    if '_workflow_file' in complete_payload:
+        del complete_payload['_workflow_file']
+    
+    # Add credentials to the payload
+    complete_payload.update(credentials)
+    
+    return json.dumps(complete_payload)
+
 def trigger_lambda(workflow_data, function_name):
     """Trigger an AWS Lambda function."""
     # Get function data
@@ -138,6 +165,8 @@ def trigger_lambda(workflow_data, function_name):
     
     credentials = get_credentials()
     payload.update(credentials)
+
+    secret_payload = create_secret_payload(workflow_data)
     
     # Debug: Show what credentials are being sent (masked for security)
     print(f"Debug: MinIO Access Key: {credentials.get('My_Minio_Bucket_ACCESS_KEY', 'None')[:8] if credentials.get('My_Minio_Bucket_ACCESS_KEY') else 'None'}...")
@@ -164,7 +193,7 @@ def trigger_lambda(workflow_data, function_name):
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
             InvocationType='RequestResponse',  # Synchronous invocation to see errors
-            Payload=json.dumps(payload)
+            Payload=secret_payload
         )
         
         print(f"Debug: Lambda response status: {response.get('StatusCode')}")
