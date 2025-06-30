@@ -155,7 +155,7 @@ def deploy_to_github(workflow_data):
         secret_payload = create_secret_payload()
         # Ensure required secrets and variables are set using environment variables
         required_secrets = {
-            "SECRET_PAYLOAD": {},
+            "SECRET_PAYLOAD": json.dumps({}),
         }
 
         vars = {
