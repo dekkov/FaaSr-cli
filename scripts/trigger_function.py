@@ -192,32 +192,17 @@ def trigger_lambda(workflow_data, function_name):
         print(f"Debug: Invoking Lambda function: {lambda_function_name}")
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
-            InvocationType='RequestResponse',  # Synchronous invocation to see errors
+            InvocationType='Event',  # Asynchronous invocation
             Payload=json.dumps(payload)
         )
         
         print(f"Debug: Lambda response status: {response.get('StatusCode')}")
         
-        # Check for function errors
-        if 'FunctionError' in response:
-            print(f"Function error type: {response['FunctionError']}")
-            
-            # Read the response payload to get error details
-            if 'Payload' in response:
-                error_payload = response['Payload'].read().decode('utf-8')
-                print(f"Error payload: {error_payload}")
-        
-        # Read and display the response payload
-        if 'Payload' in response:
-            response_payload = response['Payload'].read().decode('utf-8')
-            print(f"Function response: {response_payload}")
-        
-        if response['StatusCode'] == 200:
-            print(f"Successfully executed Lambda function: {lambda_function_name}")
+        # For async invocations, we only get status code, no payload or function errors
+        if response['StatusCode'] == 202:
+            print(f"Successfully triggered Lambda function asynchronously: {lambda_function_name}")
         else:
-            print(f"Lambda function executed with status: {response['StatusCode']}")
-            if 'FunctionError' in response:
-                print(f"Function error: {response['FunctionError']}")
+            print(f"Lambda function invocation failed with status: {response['StatusCode']}")
             sys.exit(1)
             
     except lambda_client.exceptions.ResourceNotFoundException:
