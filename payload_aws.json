@@ -46,7 +46,7 @@
         "create_sample_data": "FaaSr/FaaSr-tutorial",
         "compute_sum": "FaaSr/FaaSr-tutorial"
     },
-    "FunctionInvoke": "start",
+    "FunctionInvoke": "payload_aws_start",
     "InvocationID": "",
     "FaaSrLog": "FaaSrLog",
     "LoggingDataStore": "My_Minio_Bucket",
