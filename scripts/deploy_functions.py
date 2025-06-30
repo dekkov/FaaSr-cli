@@ -154,11 +154,6 @@ def deploy_to_github(workflow_data):
             "SECRET_PAYLOAD": secret_payload,
         }
 
-        vars = {
-            "PAYLOAD_REPO": repo_name + "/" + json_prefix + ".json",
-            "SECRET_PAYLOAD": secret_payload,
-
-        }
         ensure_github_secrets_and_vars(repo, required_secrets, vars, github_token)
         
         for func_name, func_data in github_functions.items():
