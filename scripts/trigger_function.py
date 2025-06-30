@@ -198,6 +198,15 @@ def trigger_lambda(workflow_data, function_name):
         
         print(f"Debug: Lambda response: {response}")
         
+         # Check for function errors
+        if 'FunctionError' in response:
+            print(f"Function error type: {response['FunctionError']}")
+            
+            # Read the response payload to get error details
+            if 'Payload' in response:
+                error_payload = response['Payload'].read().decode('utf-8')
+                print(f"Error payload: {error_payload}")
+
         if response['Status'] == 202:
             print(f"Successfully triggered Lambda function: {lambda_function_name}")
         else:
