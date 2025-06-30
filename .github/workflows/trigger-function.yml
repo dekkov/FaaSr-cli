@@ -1,0 +1,42 @@
+name: Trigger FaaSr Function
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_file:
+        description: 'Workflow JSON file name'
+        required: true
+        type: string
+        default: 'project1.json'
+      function_name:
+        description: 'Specific function to trigger (optional, uses FunctionInvoke if not specified)'
+        required: false
+        type: string
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install boto3 requests
+
+      - name: Trigger function
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+          MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          OW_API_KEY: ${{ secrets.OW_API_KEY }}
+        run: |
+          python scripts/trigger_function.py --workflow-file ${{ github.event.inputs.workflow_file }} 

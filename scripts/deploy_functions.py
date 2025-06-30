@@ -67,6 +67,7 @@ def set_github_variable(repo_full_name, var_name, var_value, github_token):
         print(f"Set variable {var_name} for {repo_full_name}")
 
 def ensure_github_secrets_and_vars(repo, required_secrets, required_vars, github_token):
+    """Set GitHub secrets and variables for the repository."""
     # Check and set secrets
     existing_secrets = {s.name for s in repo.get_secrets()}
     for secret_name, secret_value in required_secrets.items():
@@ -85,19 +86,15 @@ def create_secret_payload(workflow_data):
     Create a secret payload that combines all necessary credentials and the complete workflow configuration.
     This payload will be stored as a GitHub secret and used by the deployed functions.
     """
-    # Get GitHub token
-    github_token = get_github_token()
-    
-    # Get Minio credentials from environment
-    minio_access_key = os.getenv('MINIO_ACCESS_KEY')
-    minio_secret_key = os.getenv('MINIO_SECRET_KEY')
-    
-    # Get OpenWhisk API key from environment
-    ow_api_key = os.getenv('OW_API_KEY', '')
-    
-    # Get Lambda credentials from environment
-    lambda_access_key = os.getenv('AWS_ACCESS_KEY_ID', '')
-    lambda_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY', '')
+    # Get all required credentials
+    credentials = {
+        "My_GitHub_Account_TOKEN": get_github_token(),
+        "My_Minio_Bucket_ACCESS_KEY": os.getenv('MINIO_ACCESS_KEY'),
+        "My_Minio_Bucket_SECRET_KEY": os.getenv('MINIO_SECRET_KEY'),
+        "My_OW_Account_API_KEY": os.getenv('OW_API_KEY', ''),
+        "My_Lambda_Account_ACCESS_KEY": os.getenv('AWS_ACCESS_KEY_ID', ''),
+        "My_Lambda_Account_SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY', ''),
+    }
     
     # Create the complete workflow payload by merging the original workflow with credentials
     # Remove the _workflow_file field as it's not part of the FaaSr schema
@@ -106,18 +103,12 @@ def create_secret_payload(workflow_data):
         del complete_payload['_workflow_file']
     
     # Add credentials to the payload
-    complete_payload.update({
-        "My_GitHub_Account_TOKEN": github_token,
-        "My_Minio_Bucket_ACCESS_KEY": minio_access_key,
-        "My_Minio_Bucket_SECRET_KEY": minio_secret_key,
-        "My_OW_Account_API_KEY": ow_api_key,
-        "My_Lambda_Account_ACCESS_KEY": lambda_access_key,
-        "My_Lambda_Account_SECRET_KEY": lambda_secret_key,
-    })
+    complete_payload.update(credentials)
     
     return json.dumps(complete_payload)
 
 def deploy_to_github(workflow_data):
+    """Deploy functions to GitHub Actions."""
     github_token = get_github_token()
     g = Github(github_token)
     
@@ -150,17 +141,14 @@ def deploy_to_github(workflow_data):
         default_branch = repo.default_branch
         print(f"Using branch: {default_branch}")
         
+        # Create secret payload and set up secrets/variables
         secret_payload = create_secret_payload(workflow_data)
-        # Ensure required secrets and variables are set using environment variables
-        required_secrets = {
-            "SECRET_PAYLOAD": secret_payload,
-        }
-
-        vars = {
-            "PAYLOAD_REPO": repo_name + "/" + json_prefix + ".json",
-        }
+        required_secrets = {"SECRET_PAYLOAD": secret_payload}
+        vars = {"PAYLOAD_REPO": f"{repo_name}/{json_prefix}.json"}
+        
         ensure_github_secrets_and_vars(repo, required_secrets, vars, github_token)
         
+        # Deploy each function
         for func_name, func_data in github_functions.items():
             actual_func_name = func_data['FunctionName']
             
