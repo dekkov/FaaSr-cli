@@ -291,9 +291,9 @@ def main():
         print("Error: No FunctionInvoke specified in workflow file")
         sys.exit(1)
     
-    if function_invoke not in workflow_data['FunctionList']:
-        print(f"Error: FunctionInvoke '{function_invoke}' not found in FunctionList")
-        sys.exit(1)
+    # if function_invoke not in workflow_data['FunctionList']:
+    #     print(f"Error: FunctionInvoke '{function_invoke}' not found in FunctionList")
+    #     sys.exit(1)
     
     # Get function data
     func_data = workflow_data['FunctionList'][function_invoke]
