@@ -7,7 +7,7 @@ on:
         description: 'Workflow JSON file name'
         required: true
         type: string
-        default: 'project1.json'
+        default: 'payload.json'
       function_name:
         description: 'Specific function to trigger (optional, uses FunctionInvoke if not specified)'
         required: false
