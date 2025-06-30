@@ -56,6 +56,14 @@ def trigger_github_actions(workflow_data, function_name):
     json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
     workflow_name = f"{json_prefix}_{function_name}.yml"
     
+    # Debug output
+    print(f"Debug: JSON file: {workflow_file}")
+    print(f"Debug: JSON prefix: {json_prefix}")
+    print(f"Debug: Function name: {function_name}")
+    print(f"Debug: Workflow name: {workflow_name}")
+    print(f"Debug: Repository: {repo}")
+    print(f"Debug: Branch: {branch}")
+    
     # Create payload with credentials
     payload = workflow_data.copy()
     if '_workflow_file' in payload:
@@ -80,6 +88,8 @@ def trigger_github_actions(workflow_data, function_name):
     
     # Prepare request
     url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_name}/dispatches"
+    print(f"Debug: Request URL: {url}")
+    
     headers = {
         "Authorization": f"token {pat}",
         "Accept": "application/vnd.github.v3+json",
