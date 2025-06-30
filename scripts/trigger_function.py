@@ -45,7 +45,7 @@ def trigger_github_actions(workflow_data, function_name):
     server_config = workflow_data['ComputeServers'][server_name]
     
     # Get GitHub credentials and repo info
-    pat = server_config['Token']
+    pat = os.getenv('GITHUB_TOKEN')  # Use actual token from environment
     username = server_config['UserName']
     reponame = server_config['ActionRepoName']
     repo = f"{username}/{reponame}"
