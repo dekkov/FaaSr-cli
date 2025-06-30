@@ -18,7 +18,7 @@
         }
     },
     "FunctionList": {
-        "start": {
+        "stapayload_aws_startrt": {
             "FunctionName": "create_sample_data",
             "FaaSServer": "My_Lambda_Account",
             "Arguments": {
