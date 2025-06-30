@@ -219,49 +219,7 @@ def trigger_lambda(workflow_data, function_name):
         sys.exit(1)
 
 def trigger_openwhisk(workflow_data, function_name):
-    """Trigger an OpenWhisk action."""
-    # Get function data
-    func_data = workflow_data['FunctionList'][function_name]
-    server_name = func_data['FaaSServer']
-    server_config = workflow_data['ComputeServers'][server_name]
-    
-    # Get OpenWhisk configuration
-    endpoint = server_config['Endpoint']
-    namespace = server_config['Namespace']
-    ssl = server_config.get('SSL', 'True').lower() == 'true'
-    
-    # Get the JSON file prefix for action name
-    workflow_file = workflow_data.get('_workflow_file', 'workflow.json')
-    json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
-    action_name = f"{json_prefix}_{function_name}"
-    
-    # Create payload with credentials
-    payload = workflow_data.copy()
-    if '_workflow_file' in payload:
-        del payload['_workflow_file']
-    payload.update(get_credentials())
-    
-    # Prepare URL
-    if not endpoint.startswith(('http://', 'https://')):
-        endpoint = f"https://{endpoint}"
-    url = f"{endpoint}/api/v1/namespaces/{namespace}/actions/{action_name}?blocking=false&result=false"
-    
-    # Send request
-    try:
-        response = requests.post(
-            url,
-            json=payload,
-            headers={'Content-Type': 'application/json'},
-            verify=ssl
-        )
-        if response.status_code in [200, 202]:
-            print(f"Successfully triggered OpenWhisk action: {action_name}")
-        else:
-            print(f"Error triggering OpenWhisk action: {response.status_code} - {response.text}")
-            sys.exit(1)
-    except Exception as e:
-        print(f"Error triggering OpenWhisk action: {str(e)}")
-        sys.exit(1)
+    pass
 
 def main():
     args = parse_arguments()
