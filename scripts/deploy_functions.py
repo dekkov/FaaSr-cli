@@ -105,6 +105,38 @@ def create_secret_payload(workflow_data):
     if '_workflow_file' in complete_payload:
         del complete_payload['_workflow_file']
     
+    # Get the JSON file prefix for name mapping
+    workflow_file = workflow_data['_workflow_file']
+    json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
+    
+    # Update InvokeNext references to use prefixed names for GitHub Actions functions
+    for func_name, func_data in complete_payload['FunctionList'].items():
+        if 'InvokeNext' in func_data:
+            invoke_next = func_data['InvokeNext']
+            if isinstance(invoke_next, str):
+                # Single function reference
+                if invoke_next in complete_payload['FunctionList']:
+                    next_func_data = complete_payload['FunctionList'][invoke_next]
+                    server_name = next_func_data['FaaSServer']
+                    server_config = complete_payload['ComputeServers'][server_name]
+                    if server_config['FaaSType'].lower() == 'githubactions':
+                        func_data['InvokeNext'] = f"{json_prefix}_{invoke_next}"
+            elif isinstance(invoke_next, list):
+                # Multiple function references
+                updated_invoke_next = []
+                for next_func in invoke_next:
+                    if next_func in complete_payload['FunctionList']:
+                        next_func_data = complete_payload['FunctionList'][next_func]
+                        server_name = next_func_data['FaaSServer']
+                        server_config = complete_payload['ComputeServers'][server_name]
+                        if server_config['FaaSType'].lower() == 'githubactions':
+                            updated_invoke_next.append(f"{json_prefix}_{next_func}")
+                        else:
+                            updated_invoke_next.append(next_func)
+                    else:
+                        updated_invoke_next.append(next_func)
+                func_data['InvokeNext'] = updated_invoke_next
+    
     # Add credentials to the payload
     complete_payload.update({
         "My_GitHub_Account_TOKEN": github_token,
