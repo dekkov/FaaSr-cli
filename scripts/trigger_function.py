@@ -173,14 +173,6 @@ def trigger_lambda(workflow_data, function_name):
     
     credentials = get_credentials()
     payload.update(credentials)
-
-    # secret_payload = create_secret_payload(workflow_data)
-    
-    # Debug: Show what credentials are being sent (masked for security)
-    print(f"Debug: MinIO Access Key: {credentials.get('My_Minio_Bucket_ACCESS_KEY', 'None')[:8] if credentials.get('My_Minio_Bucket_ACCESS_KEY') else 'None'}...")
-    print(f"Debug: MinIO Secret Key: {'*' * 8 if credentials.get('My_Minio_Bucket_SECRET_KEY') else 'None'}")
-    print(f"Debug: MinIO Endpoint: {payload['DataStores']['My_Minio_Bucket']['Endpoint']}")
-    print(f"Debug: MinIO Bucket: {payload['DataStores']['My_Minio_Bucket']['Bucket']}")
     
     # Create Lambda client
     try:
@@ -204,7 +196,7 @@ def trigger_lambda(workflow_data, function_name):
             InvokeArgs=json.dumps(payload)
         )
         
-        print(f"Debug: Lambda response status: {response.get('Status')}")
+        print(f"Debug: Lambda response: {response}")
         
         if response['Status'] == 202:
             print(f"Successfully triggered Lambda function: {lambda_function_name}")
