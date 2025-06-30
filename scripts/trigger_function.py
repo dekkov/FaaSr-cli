@@ -174,7 +174,7 @@ def trigger_lambda(workflow_data, function_name):
     credentials = get_credentials()
     payload.update(credentials)
 
-    secret_payload = create_secret_payload(workflow_data)
+    # secret_payload = create_secret_payload(workflow_data)
     
     # Debug: Show what credentials are being sent (masked for security)
     print(f"Debug: MinIO Access Key: {credentials.get('My_Minio_Bucket_ACCESS_KEY', 'None')[:8] if credentials.get('My_Minio_Bucket_ACCESS_KEY') else 'None'}...")
@@ -198,34 +198,18 @@ def trigger_lambda(workflow_data, function_name):
     # Invoke function
     try:
         print(f"Debug: Invoking Lambda function: {lambda_function_name}")
-        response = lambda_client.invoke(
+        # Use invoke_async with InvokeArgs to match R script implementation
+        response = lambda_client.invoke_async(
             FunctionName=lambda_function_name,
-            InvocationType='RequestResponse',  # Synchronous invocation to see errors
-            Payload=secret_payload
+            InvokeArgs=json.dumps(payload)
         )
         
-        print(f"Debug: Lambda response status: {response.get('StatusCode')}")
+        print(f"Debug: Lambda response status: {response.get('Status')}")
         
-        # Check for function errors
-        if 'FunctionError' in response:
-            print(f"Function error type: {response['FunctionError']}")
-            
-            # Read the response payload to get error details
-            if 'Payload' in response:
-                error_payload = response['Payload'].read().decode('utf-8')
-                print(f"Error payload: {error_payload}")
-        
-        # Read and display the response payload
-        if 'Payload' in response:
-            response_payload = response['Payload'].read().decode('utf-8')
-            print(f"Function response: {response_payload}")
-        
-        if response['StatusCode'] == 200:
-            print(f"Successfully executed Lambda function: {lambda_function_name}")
+        if response['Status'] == 202:
+            print(f"Successfully triggered Lambda function: {lambda_function_name}")
         else:
-            print(f"Lambda function executed with status: {response['StatusCode']}")
-            if 'FunctionError' in response:
-                print(f"Function error: {response['FunctionError']}")
+            print(f"Error triggering Lambda function: {response['Status']}")
             sys.exit(1)
     except lambda_client.exceptions.ResourceNotFoundException:
         print(f"Error: Lambda function '{lambda_function_name}' not found")
