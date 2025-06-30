@@ -240,6 +240,9 @@ def deploy_to_aws(workflow_data):
         region_name=aws_region
     )
     
+    # Create secret payload (same as GitHub deployment)
+    secret_payload = create_secret_payload(workflow_data)
+    
     # Filter functions that should be deployed to AWS Lambda
     lambda_functions = {}
     for func_name, func_data in workflow_data['FunctionList'].items():
@@ -259,6 +262,12 @@ def deploy_to_aws(workflow_data):
             # Create prefixed function name
             prefixed_func_name = f"{json_prefix}_{func_name}"
             
+            # Environment variables for Lambda function (similar to GitHub Actions)
+            environment_vars = {
+                'SECRET_PAYLOAD': secret_payload,
+                'JSON_PREFIX': json_prefix
+            }
+            
             # Create or update Lambda function
             try:
                 lambda_client.create_function(
@@ -267,16 +276,22 @@ def deploy_to_aws(workflow_data):
                     Code={'ImageUri': '145342739029.dkr.ecr.us-east-1.amazonaws.com/aws-lambda-tidyverse:latest'},
                     Role=role_arn,
                     Timeout=300,
-                    MemorySize=256
+                    MemorySize=256,
+                    Environment={'Variables': environment_vars}
                 )
+                print(f"Successfully created {prefixed_func_name} on AWS Lambda")
             except lambda_client.exceptions.ResourceConflictException:
                 # Update existing function
                 lambda_client.update_function_code(
                     FunctionName=prefixed_func_name,
                     ImageUri='145342739029.dkr.ecr.us-east-1.amazonaws.com/aws-lambda-tidyverse:latest'
                 )
-            
-            print(f"Successfully deployed {prefixed_func_name} to AWS Lambda")
+                # Also update environment variables
+                lambda_client.update_function_configuration(
+                    FunctionName=prefixed_func_name,
+                    Environment={'Variables': environment_vars}
+                )
+                print(f"Successfully updated {prefixed_func_name} on AWS Lambda")
             
         except Exception as e:
             print(f"Error deploying {prefixed_func_name} to AWS: {str(e)}")
