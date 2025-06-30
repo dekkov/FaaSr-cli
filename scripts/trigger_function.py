@@ -190,15 +190,15 @@ def trigger_lambda(workflow_data, function_name):
     # Invoke function
     try:
         print(f"Debug: Invoking Lambda function: {lambda_function_name}")
-        # Use invoke_async with InvokeArgs to match R script implementation
-        response = lambda_client.invoke_async(
+        response = lambda_client.invoke(
             FunctionName=lambda_function_name,
-            InvokeArgs=json.dumps(payload)
+            InvocationType='RequestResponse',  # Synchronous invocation to see errors
+            Payload=json.dumps(payload)
         )
         
-        print(f"Debug: Lambda response: {response}")
+        print(f"Debug: Lambda response status: {response.get('StatusCode')}")
         
-         # Check for function errors
+        # Check for function errors
         if 'FunctionError' in response:
             print(f"Function error type: {response['FunctionError']}")
             
@@ -206,12 +206,20 @@ def trigger_lambda(workflow_data, function_name):
             if 'Payload' in response:
                 error_payload = response['Payload'].read().decode('utf-8')
                 print(f"Error payload: {error_payload}")
-
-        if response['Status'] == 202:
-            print(f"Successfully triggered Lambda function: {lambda_function_name}")
+        
+        # Read and display the response payload
+        if 'Payload' in response:
+            response_payload = response['Payload'].read().decode('utf-8')
+            print(f"Function response: {response_payload}")
+        
+        if response['StatusCode'] == 200:
+            print(f"Successfully executed Lambda function: {lambda_function_name}")
         else:
-            print(f"Error triggering Lambda function: {response['Status']}")
+            print(f"Lambda function executed with status: {response['StatusCode']}")
+            if 'FunctionError' in response:
+                print(f"Function error: {response['FunctionError']}")
             sys.exit(1)
+            
     except lambda_client.exceptions.ResourceNotFoundException:
         print(f"Error: Lambda function '{lambda_function_name}' not found")
         print(f"Make sure the function exists in region '{aws_region}'")
