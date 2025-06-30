@@ -114,15 +114,29 @@ def trigger_lambda(workflow_data, function_name):
     server_name = func_data['FaaSServer']
     server_config = workflow_data['ComputeServers'][server_name]
     
-    # Get AWS credentials
+    # Get AWS credentials from environment variables (same as deploy script)
     aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
     aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-    aws_region = server_config['Region']
+    aws_region = server_config.get('Region', 'us-east-1')
     
     # Get the JSON file prefix for function name
     workflow_file = workflow_data.get('_workflow_file', 'workflow.json')
     json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
     lambda_function_name = f"{json_prefix}_{function_name}"
+    
+    # Debug output
+    print(f"Debug: JSON file: {workflow_file}")
+    print(f"Debug: JSON prefix: {json_prefix}")
+    print(f"Debug: Function name: {function_name}")
+    print(f"Debug: Lambda function name: {lambda_function_name}")
+    print(f"Debug: AWS Region: {aws_region}")
+    print(f"Debug: AWS Access Key: {aws_access_key[:8] if aws_access_key else 'None'}...")
+    
+    # Validate credentials
+    if not aws_access_key or not aws_secret_key:
+        print("Error: AWS credentials not found in environment variables")
+        print("Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables")
+        sys.exit(1)
     
     # Create payload with credentials
     payload = workflow_data.copy()
@@ -131,27 +145,48 @@ def trigger_lambda(workflow_data, function_name):
     payload.update(get_credentials())
     
     # Create Lambda client
-    lambda_client = boto3.client(
-        'lambda',
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
-        region_name=aws_region
-    )
+    try:
+        lambda_client = boto3.client(
+            'lambda',
+            aws_access_key_id=aws_access_key,
+            aws_secret_access_key=aws_secret_key,
+            region_name=aws_region
+        )
+        print(f"Debug: Lambda client created successfully")
+    except Exception as e:
+        print(f"Error creating Lambda client: {str(e)}")
+        sys.exit(1)
     
     # Invoke function
     try:
+        print(f"Debug: Invoking Lambda function: {lambda_function_name}")
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
             InvocationType='Event',  # Async invocation
             Payload=json.dumps(payload)
         )
+        
+        print(f"Debug: Lambda response status: {response.get('StatusCode')}")
+        print(f"Debug: Lambda response: {response}")
+        
         if response['StatusCode'] == 202:
             print(f"Successfully triggered Lambda function: {lambda_function_name}")
         else:
             print(f"Error triggering Lambda function: {response['StatusCode']}")
+            if 'FunctionError' in response:
+                print(f"Function error: {response['FunctionError']}")
             sys.exit(1)
+    except lambda_client.exceptions.ResourceNotFoundException:
+        print(f"Error: Lambda function '{lambda_function_name}' not found")
+        print(f"Make sure the function exists in region '{aws_region}'")
+        print(f"You can deploy it using: python scripts/deploy_functions.py --workflow-file {workflow_file}")
+        sys.exit(1)
+    except lambda_client.exceptions.InvalidParameterValueException as e:
+        print(f"Error: Invalid parameter - {str(e)}")
+        sys.exit(1)
     except Exception as e:
         print(f"Error triggering Lambda function: {str(e)}")
+        print(f"Error type: {type(e).__name__}")
         sys.exit(1)
 
 def trigger_openwhisk(workflow_data, function_name):
