@@ -157,7 +157,7 @@ def trigger_lambda(workflow_data, function_name):
     # Get the JSON file prefix for function name
     workflow_file = workflow_data.get('_workflow_file', 'workflow.json')
     json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
-    lambda_function_name = f"{json_prefix}_{function_name}"
+    lambda_function_name = f"{function_name}"
     
     
     # Validate credentials
