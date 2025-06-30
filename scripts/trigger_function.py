@@ -134,6 +134,14 @@ def create_secret_payload(workflow_data):
     
     return json.dumps(complete_payload)
 
+def get_github_token():
+    # Get GitHub PAT from environment variable
+    token = os.getenv('GITHUB_TOKEN')
+    if not token:
+        print("Error: GITHUB_TOKEN environment variable not set")
+        sys.exit(1)
+    return token
+
 def trigger_lambda(workflow_data, function_name):
     """Trigger an AWS Lambda function."""
     # Get function data
