@@ -102,6 +102,8 @@ def create_secret_payload(workflow_data):
     # Create the complete workflow payload by merging the original workflow with credentials
     # Remove the _workflow_file field as it's not part of the FaaSr schema
     complete_payload = workflow_data.copy()
+    if '_workflow_file' in complete_payload:
+        del complete_payload['_workflow_file']
     
     # Add credentials to the payload
     complete_payload.update({
@@ -154,6 +156,9 @@ def deploy_to_github(workflow_data):
             "SECRET_PAYLOAD": secret_payload,
         }
 
+        vars = {
+            "PAYLOAD_REPO": repo_name + "/" + json_prefix + ".json",
+        }
         ensure_github_secrets_and_vars(repo, required_secrets, vars, github_token)
         
         for func_name, func_data in github_functions.items():
