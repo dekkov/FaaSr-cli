@@ -104,8 +104,8 @@ def create_secret_payload():
     # Create the inner payload structure with credentials and complete workflow data
     inner_payload = {
         "My_GitHub_Account_TOKEN": github_token,
-        "My_Minio_Bucket_ACCESS_KEY": "Q3AM3UQ867SPQQA43P2F",
-        "My_Minio_Bucket_SECRET_KEY": "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG",
+        "My_Minio_Bucket_ACCESS_KEY": minio_access_key,
+        "My_Minio_Bucket_SECRET_KEY": minio_secret_key,
         "My_OW_Account_API_KEY": ow_api_key,
         "My_Lambda_Account_ACCESS_KEY": lambda_access_key,
         "My_Lambda_Account_SECRET_KEY": lambda_secret_key,
@@ -155,7 +155,7 @@ def deploy_to_github(workflow_data):
         secret_payload = create_secret_payload()
         # Ensure required secrets and variables are set using environment variables
         required_secrets = {
-            "SECRET_PAYLOAD": json.dumps({}),
+            "SECRET_PAYLOAD": str(secret_payload),
         }
 
         vars = {
