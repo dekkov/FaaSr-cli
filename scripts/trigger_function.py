@@ -48,6 +48,18 @@ def build_faasr_payload(workflow_data, mask_secrets_for_github=False):
     if '_workflow_file' in workflow_copy:
         del workflow_copy['_workflow_file']
     payload.update(workflow_copy)
+    
+    # Ensure environment credentials take precedence over JSON file values
+    credentials = get_credentials()
+    
+    # Override DataStore credentials with environment variables
+    if 'DataStores' in payload:
+        for store_key, store_config in payload['DataStores'].items():
+            if store_key == 'My_Minio_Bucket':
+                if credentials['My_Minio_Bucket_ACCESS_KEY']:
+                    store_config['AccessKey'] = credentials['My_Minio_Bucket_ACCESS_KEY']
+                if credentials['My_Minio_Bucket_SECRET_KEY']:
+                    store_config['SecretKey'] = credentials['My_Minio_Bucket_SECRET_KEY']
 
     if mask_secrets_for_github:
         # Mask secrets for GitHub Actions
@@ -167,7 +179,7 @@ def trigger_lambda(workflow_data, function_name):
     # Create payload with credentials
     payload = build_faasr_payload(workflow_data)
     
-    print(payload['My_Minio_Bucket_ACCESS_KEY'] == os.getenv('MINIO_ACCESS_KEY'))
+    print(payload['My_Minio_Bucket_ACCESS_KEY'] == "Q3AM3UQ867SPQQA43P2F")
 
     # Create Lambda client
     try:
