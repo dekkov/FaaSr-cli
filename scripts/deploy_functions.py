@@ -152,8 +152,8 @@ def deploy_to_github(workflow_data):
         for func_name, func_data in github_functions.items():
             actual_func_name = func_data['FunctionName']
             
-            # Create workflow file with prefixed name
-            workflow_content = f"""name: {json_prefix}_{func_name}
+            # Create workflow file
+            workflow_content = f"""name: {func_name}
 
 on:
   workflow_dispatch:
@@ -179,7 +179,7 @@ jobs:
 """
             
             # Create or update the workflow file
-            workflow_path = f".github/workflows/{json_prefix}_{func_name}.yml"
+            workflow_path = f".github/workflows/{func_name}.yml"
             try:
                 # Try to get the file first
                 contents = repo.get_contents(workflow_path)
@@ -193,7 +193,7 @@ jobs:
                     print(f"File {workflow_path} exists, updating...")
                     repo.update_file(
                         path=workflow_path,
-                        message=f"Update workflow for {json_prefix}_{func_name}",
+                        message=f"Update workflow for {func_name}",
                         content=workflow_content,
                         sha=contents.sha,
                         branch=default_branch
@@ -205,7 +205,7 @@ jobs:
                     print(f"File {workflow_path} doesn't exist, creating...")
                     repo.create_file(
                         path=workflow_path,
-                        message=f"Add workflow for {json_prefix}_{func_name}",
+                        message=f"Add workflow for {func_name}",
                         content=workflow_content,
                         branch=default_branch
                     )
@@ -228,10 +228,6 @@ jobs:
 def deploy_to_aws(workflow_data):
     # Get AWS credentials
     aws_access_key, aws_secret_key, aws_region, role_arn = get_aws_credentials()
-    
-    # Get the JSON file prefix
-    workflow_file = workflow_data['_workflow_file']
-    json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
     
     lambda_client = boto3.client(
         'lambda',
@@ -259,19 +255,16 @@ def deploy_to_aws(workflow_data):
     for func_name, func_data in lambda_functions.items():
         try:
             actual_func_name = func_data['FunctionName']
-            # Create prefixed function name
-            prefixed_func_name = f"{json_prefix}_{func_name}"
             
-            # Environment variables for Lambda function (similar to GitHub Actions)
+            # Environment variables for Lambda function
             environment_vars = {
-                'SECRET_PAYLOAD': secret_payload,
-                'JSON_PREFIX': json_prefix
+                'SECRET_PAYLOAD': secret_payload
             }
             
             # Create or update Lambda function
             try:
                 lambda_client.create_function(
-                    FunctionName=prefixed_func_name,
+                    FunctionName=func_name,
                     PackageType='Image',
                     Code={'ImageUri': '145342739029.dkr.ecr.us-east-1.amazonaws.com/aws-lambda-tidyverse:latest'},
                     Role=role_arn,
@@ -279,22 +272,22 @@ def deploy_to_aws(workflow_data):
                     MemorySize=256,
                     Environment={'Variables': environment_vars}
                 )
-                print(f"Successfully created {prefixed_func_name} on AWS Lambda")
+                print(f"Successfully created {func_name} on AWS Lambda")
             except lambda_client.exceptions.ResourceConflictException:
                 # Update existing function
                 lambda_client.update_function_code(
-                    FunctionName=prefixed_func_name,
+                    FunctionName=func_name,
                     ImageUri='145342739029.dkr.ecr.us-east-1.amazonaws.com/aws-lambda-tidyverse:latest'
                 )
                 # Also update environment variables
                 lambda_client.update_function_configuration(
-                    FunctionName=prefixed_func_name,
+                    FunctionName=func_name,
                     Environment={'Variables': environment_vars}
                 )
-                print(f"Successfully updated {prefixed_func_name} on AWS Lambda")
+                print(f"Successfully updated {func_name} on AWS Lambda")
             
         except Exception as e:
-            print(f"Error deploying {prefixed_func_name} to AWS: {str(e)}")
+            print(f"Error deploying {func_name} to AWS: {str(e)}")
             sys.exit(1)
 
 
@@ -314,10 +307,6 @@ def get_openwhisk_credentials(workflow_data):
 def deploy_to_ow(workflow_data):
     # Get OpenWhisk credentials
     api_host, namespace, ssl = get_openwhisk_credentials(workflow_data)
-    
-    # Get the JSON file prefix
-    workflow_file = workflow_data['_workflow_file']
-    json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
     
     # Filter functions that should be deployed to OpenWhisk
     ow_functions = {}
@@ -346,31 +335,29 @@ def deploy_to_ow(workflow_data):
     for func_name, func_data in ow_functions.items():
         try:
             actual_func_name = func_data['FunctionName']
-            # Create prefixed function name
-            prefixed_func_name = f"{json_prefix}_{func_name}"
             
             # Create or update OpenWhisk action using wsk CLI
             try:
                 # First check if action exists (add --insecure flag)
-                check_cmd = f"wsk action get {prefixed_func_name} --insecure >/dev/null 2>&1"
+                check_cmd = f"wsk action get {func_name} --insecure >/dev/null 2>&1"
                 exists = subprocess.run(check_cmd, shell=True, env=env).returncode == 0
                 
                 if exists:
                     # Update existing action (add --insecure flag)
-                    cmd = f"wsk action update {prefixed_func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                    cmd = f"wsk action update {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 else:
                     # Create new action (add --insecure flag)
-                    cmd = f"wsk action create {prefixed_func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                    cmd = f"wsk action create {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
                 
                 if result.returncode != 0:
                     raise Exception(f"Failed to {'update' if exists else 'create'} action: {result.stderr}")
                 
-                print(f"Successfully deployed {prefixed_func_name} to OpenWhisk")
+                print(f"Successfully deployed {func_name} to OpenWhisk")
                 
             except Exception as e:
-                print(f"Error deploying {prefixed_func_name} to OpenWhisk: {str(e)}")
+                print(f"Error deploying {func_name} to OpenWhisk: {str(e)}")
                 sys.exit(1)
                 
         except Exception as e:
