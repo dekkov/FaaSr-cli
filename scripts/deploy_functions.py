@@ -292,13 +292,10 @@ def deploy_to_aws(workflow_data):
                         last_update_status = response['Configuration']['LastUpdateStatus']
                         
                         if state == 'Active' and last_update_status == 'Successful':
-                            print(f"{func_name} code update completed successfully")
                             break
                         elif state == 'Failed' or last_update_status == 'Failed':
-                            print(f"Function {func_name} update failed - State: {state}, LastUpdateStatus: {last_update_status}")
                             sys.exit(1)
                         else:
-                            print(f"Function {func_name} - State: {state}, LastUpdateStatus: {last_update_status}, waiting...")
                             time.sleep(5)
                             attempt += 1
                     except Exception as e:
@@ -426,7 +423,6 @@ def main():
         else:
             print(f"Warning: Unknown FaaSType '{faas_type}' - skipping")
     
-    print("\nMulti-platform deployment completed!")
 
 if __name__ == '__main__':
     main() 

@@ -32,11 +32,13 @@ jobs:
 
       - name: Trigger function
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
-          MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
-          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          OW_API_KEY: ${{ secrets.OW_API_KEY }}
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+            AWS_LAMBDA_ROLE_ARN: ${{ secrets.AWS_LAMBDA_ROLE_ARN }}
+            OW_API_KEY: ${{ secrets.OW_API_KEY }}
+            MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+            MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+            GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
           python scripts/trigger_function.py --workflow-file ${{ github.event.inputs.workflow_file }} 

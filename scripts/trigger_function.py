@@ -7,7 +7,6 @@ import sys
 import requests
 import boto3
 import subprocess
-import copy
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Trigger FaaSr function from JSON file')
@@ -62,12 +61,9 @@ def trigger_github_actions(workflow_data, function_name):
         del payload['_workflow_file']
     payload.update(get_credentials())
     
-    # Create a copy for GitHub Actions that hides credentials
-    github_payload = copy.deepcopy(payload)
-    
-    # Hide credentials in payload for GitHub Actions only
-    for server_key in github_payload['ComputeServers']:
-        server = github_payload['ComputeServers'][server_key]
+    # Hide credentials in payload for GitHub Actions
+    for server_key in payload['ComputeServers']:
+        server = payload['ComputeServers'][server_key]
         if server['FaaSType'] == 'GitHubActions':
             server['Token'] = f"{server_key}_TOKEN"
         elif server['FaaSType'] == 'Lambda':
@@ -76,8 +72,8 @@ def trigger_github_actions(workflow_data, function_name):
         elif server['FaaSType'] == 'OpenWhisk':
             server['API.key'] = f"{server_key}_API_KEY"
     
-    for store_key in github_payload['DataStores']:
-        store = github_payload['DataStores'][store_key]
+    for store_key in payload['DataStores']:
+        store = payload['DataStores'][store_key]
         store['AccessKey'] = f"{store_key}_ACCESS_KEY"
         store['SecretKey'] = f"{store_key}_SECRET_KEY"
     
@@ -93,7 +89,7 @@ def trigger_github_actions(workflow_data, function_name):
     body = {
         "ref": branch,
         "inputs": {
-            "PAYLOAD": json.dumps(github_payload)
+            "PAYLOAD": json.dumps(payload)
         }
     }
     
@@ -182,12 +178,10 @@ def trigger_lambda(workflow_data, function_name):
     # Invoke function
     try:
         print(f"Debug: Invoking Lambda function: {lambda_function_name}")
-        payload_json = json.dumps(payload)
-        print(f"Debug: Lambda payload: {payload_json}")
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
             InvocationType='RequestResponse',  # Synchronous invocation to get error responses
-            Payload=payload_json
+            Payload=json.dumps(payload)
         )
         
         print(f"Debug: Lambda response status: {response.get('StatusCode')}")
