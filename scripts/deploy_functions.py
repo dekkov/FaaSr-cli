@@ -11,6 +11,7 @@ import tempfile
 import shutil
 import subprocess
 import requests
+import time
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Deploy FaaSr functions to specified platform')
@@ -280,16 +281,32 @@ def deploy_to_aws(workflow_data):
                     ImageUri='145342739029.dkr.ecr.us-east-1.amazonaws.com/aws-lambda-tidyverse:latest'
                 )
                 
-                # Wait for the function update to complete before updating configuration
+                # Wait for the function update to complete
                 print(f"Waiting for {func_name} code update to complete...")
-                waiter = lambda_client.get_waiter('function_updated')
-                waiter.wait(
-                    FunctionName=func_name,
-                    WaiterConfig={
-                        'Delay': 5,  # Check every 5 seconds
-                        'MaxAttempts': 60  # Wait up to 5 minutes
-                    }
-                )
+                max_attempts = 60  # Wait up to 5 minutes
+                attempt = 0
+                while attempt < max_attempts:
+                    try:
+                        response = lambda_client.get_function(FunctionName=func_name)
+                        state = response['Configuration']['State']
+                        if state == 'Active':
+                            print(f"{func_name} code update completed successfully")
+                            break
+                        elif state in ['Failed']:
+                            print(f"Function {func_name} update failed with state: {state}")
+                            sys.exit(1)
+                        else:
+                            print(f"Function {func_name} state: {state}, waiting...")
+                            time.sleep(5)
+                            attempt += 1
+                    except Exception as e:
+                        print(f"Error checking function state: {str(e)}")
+                        time.sleep(5)
+                        attempt += 1
+                
+                if attempt >= max_attempts:
+                    print(f"Timeout waiting for {func_name} update to complete")
+                    sys.exit(1)
                 
                 # Now update environment variables
                 lambda_client.update_function_configuration(
