@@ -8,6 +8,8 @@ import requests
 import boto3
 import subprocess
 
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Trigger FaaSr function from JSON file')
     parser.add_argument('--workflow-file', required=True,
@@ -37,6 +39,29 @@ def get_credentials():
         "My_Lambda_Account_SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY', ''),
     }
 
+def build_faasr_payload(workflow_data, mask_secrets_for_github=False):
+    payload = workflow_data.copy()
+    if '_workflow_file' in payload:
+        del payload['_workflow_file']
+    payload.update(get_credentials())
+
+    if mask_secrets_for_github:
+        # Mask secrets for GitHub Actions
+        for server_key in payload['ComputeServers']:
+            server = payload['ComputeServers'][server_key]
+            if server['FaaSType'] == 'GitHubActions':
+                server['Token'] = f"{server_key}_TOKEN"
+            elif server['FaaSType'] == 'Lambda':
+                server['AccessKey'] = f"{server_key}_ACCESS_KEY"
+                server['SecretKey'] = f"{server_key}_SECRET_KEY"
+            elif server['FaaSType'] == 'OpenWhisk':
+                server['API.key'] = f"{server_key}_API_KEY"
+        for store_key in payload['DataStores']:
+            store = payload['DataStores'][store_key]
+            store['AccessKey'] = f"{store_key}_ACCESS_KEY"
+            store['SecretKey'] = f"{store_key}_SECRET_KEY"
+    return payload
+
 def trigger_github_actions(workflow_data, function_name):
     """Trigger a GitHub Actions workflow."""
     # Get function data
@@ -54,28 +79,8 @@ def trigger_github_actions(workflow_data, function_name):
     # Use function name directly for workflow name
     workflow_name = f"{function_name}.yml"
 
-    
-    # Create payload with credentials
-    payload = workflow_data.copy()
-    if '_workflow_file' in payload:
-        del payload['_workflow_file']
-    payload.update(get_credentials())
-    
-    # Hide credentials in payload for GitHub Actions
-    for server_key in payload['ComputeServers']:
-        server = payload['ComputeServers'][server_key]
-        if server['FaaSType'] == 'GitHubActions':
-            server['Token'] = f"{server_key}_TOKEN"
-        elif server['FaaSType'] == 'Lambda':
-            server['AccessKey'] = f"{server_key}_ACCESS_KEY"
-            server['SecretKey'] = f"{server_key}_SECRET_KEY"
-        elif server['FaaSType'] == 'OpenWhisk':
-            server['API.key'] = f"{server_key}_API_KEY"
-    
-    for store_key in payload['DataStores']:
-        store = payload['DataStores'][store_key]
-        store['AccessKey'] = f"{store_key}_ACCESS_KEY"
-        store['SecretKey'] = f"{store_key}_SECRET_KEY"
+    # Create payload with credentials and mask secrets for GitHub Actions
+    payload = build_faasr_payload(workflow_data, mask_secrets_for_github=True)
     
     # Prepare request
     url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_name}/dispatches"
@@ -155,13 +160,8 @@ def trigger_lambda(workflow_data, function_name):
     # Use function name directly
     lambda_function_name = function_name
     
-    # Create payload with credentials (same as R implementation)
-    payload = workflow_data.copy()
-    if '_workflow_file' in payload:
-        del payload['_workflow_file']
-    
-    credentials = get_credentials()
-    payload.update(credentials)
+    # Create payload with credentials
+    payload = build_faasr_payload(workflow_data)
     
     # Create Lambda client
     try:
@@ -178,6 +178,8 @@ def trigger_lambda(workflow_data, function_name):
     # Invoke function with response
     try:
         print(f"Debug: Invoking Lambda function: {lambda_function_name}")
+        print("Payload being sent to Lambda:")
+        print(json.dumps(payload, indent=2))
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
             InvocationType='RequestResponse',  # Synchronous invocation to get response
@@ -213,8 +215,6 @@ def trigger_lambda(workflow_data, function_name):
             
     except lambda_client.exceptions.ResourceNotFoundException:
         print(f"✗ Error: Lambda function '{lambda_function_name}' not found")
-        print(f"  Make sure the function exists in region '{aws_region}'")
-        print(f"  You can list functions with: aws lambda list-functions --region {aws_region}")
         sys.exit(1)
     except Exception as e:
         print(f"✗ Error triggering Lambda function: {str(e)}")
