@@ -97,6 +97,29 @@ def create_secret_payload(workflow_data):
         "My_Lambda_Account_SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY', ''),
     }
     
+    # Validate critical credentials
+    missing_creds = []
+    if not credentials["My_Minio_Bucket_ACCESS_KEY"]:
+        missing_creds.append("MINIO_ACCESS_KEY")
+    if not credentials["My_Minio_Bucket_SECRET_KEY"]:
+        missing_creds.append("MINIO_SECRET_KEY")
+    
+    # Only validate AWS credentials if Lambda functions are present
+    lambda_functions_exist = any(
+        server.get('FaaSType', '').lower() == 'lambda' 
+        for server in workflow_data.get('ComputeServers', {}).values()
+    )
+    
+    if lambda_functions_exist:
+        if not credentials["My_Lambda_Account_ACCESS_KEY"]:
+            missing_creds.append("AWS_ACCESS_KEY_ID")
+        if not credentials["My_Lambda_Account_SECRET_KEY"]:
+            missing_creds.append("AWS_SECRET_ACCESS_KEY")
+    
+    if missing_creds:
+        print(f"Warning: Missing credentials in environment variables: {', '.join(missing_creds)}")
+        print("This may cause authentication failures in deployed functions")
+    
     # Create the complete workflow payload by merging the original workflow with credentials
     # Remove the _workflow_file field as it's not part of the FaaSr schema
     complete_payload = workflow_data.copy()
@@ -257,6 +280,18 @@ def deploy_to_aws(workflow_data):
         try:
             actual_func_name = func_data['FunctionName']
             
+            # Debug payload information
+            payload_size = len(secret_payload.encode('utf-8'))
+            print(f"Deploying {func_name}: payload size = {payload_size} bytes")
+            
+            # Check for critical credentials in payload
+            payload_obj = json.loads(secret_payload)
+            minio_access = payload_obj.get('My_Minio_Bucket_ACCESS_KEY', 'NOT_SET')
+            aws_access = payload_obj.get('My_Lambda_Account_ACCESS_KEY', 'NOT_SET')
+            
+            print(f"MinIO Access Key: {'SET' if minio_access and minio_access != 'NOT_SET' else 'MISSING'}")
+            print(f"AWS Access Key: {'SET' if aws_access and aws_access != 'NOT_SET' else 'MISSING'}")
+            
             # Environment variables for Lambda function
             environment_vars = {
                 'SECRET_PAYLOAD': secret_payload
@@ -316,6 +351,12 @@ def deploy_to_aws(workflow_data):
             
         except Exception as e:
             print(f"Error deploying {func_name} to AWS: {str(e)}")
+            # Print additional debugging information
+            if "RequestEntityTooLargeException" in str(e):
+                print(f"Payload too large. SECRET_PAYLOAD size: {len(secret_payload)} bytes")
+                print("Consider reducing workflow complexity or using external storage")
+            elif "InvalidParameterValueException" in str(e):
+                print("Check Lambda configuration parameters (memory, timeout, role)")
             sys.exit(1)
 
 
