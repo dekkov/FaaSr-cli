@@ -175,41 +175,36 @@ def trigger_lambda(workflow_data, function_name):
         print(f"Error creating Lambda client: {str(e)}")
         sys.exit(1)
     
-    # Invoke function
+    # Invoke function asynchronously
     try:
-        print(f"Debug: Invoking Lambda function: {lambda_function_name}")
+        print(f"Debug: Invoking Lambda function asynchronously: {lambda_function_name}")
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
-            InvocationType='RequestResponse',  # Synchronous invocation to get error responses
+            InvocationType='Event',  # Asynchronous invocation - doesn't wait for response
             Payload=json.dumps(payload)
         )
         
         print(f"Debug: Lambda response status: {response.get('StatusCode')}")
         
-        # For synchronous invocations, check status and handle errors
-        if response['StatusCode'] == 200:
-            # Check if there was a function error
-            if 'FunctionError' in response:
-                error_type = response['FunctionError']
-                payload_response = json.loads(response['Payload'].read())
-                print(f"Lambda function error ({error_type}): {payload_response}")
-                sys.exit(1)
-            else:
-                print(f"Successfully triggered Lambda function: {lambda_function_name}")
-                # Optionally print the response payload
-                payload_response = response['Payload'].read()
-                if payload_response:
-                    print(f"Function response: {payload_response.decode('utf-8')}")
+        # For asynchronous invocations, status 202 means successfully queued
+        if response['StatusCode'] == 202:
+            print(f"✓ Successfully triggered Lambda function: {lambda_function_name}")
+            
         else:
-            print(f"Lambda function invocation failed with status: {response['StatusCode']}")
+            print(f"✗ Lambda function invocation failed with status: {response['StatusCode']}")
+            if 'Payload' in response:
+                payload_content = response['Payload'].read()
+                if payload_content:
+                    print(f"Response payload: {payload_content.decode('utf-8')}")
             sys.exit(1)
             
     except lambda_client.exceptions.ResourceNotFoundException:
-        print(f"Error: Lambda function '{lambda_function_name}' not found")
-        print(f"Make sure the function exists in region '{aws_region}'")
+        print(f"✗ Error: Lambda function '{lambda_function_name}' not found")
+        print(f"  Make sure the function exists in region '{aws_region}'")
+        print(f"  You can list functions with: aws lambda list-functions --region {aws_region}")
         sys.exit(1)
     except Exception as e:
-        print(f"Error triggering Lambda function: {str(e)}")
+        print(f"✗ Error triggering Lambda function: {str(e)}")
         sys.exit(1)
 
 def trigger_openwhisk(workflow_data, function_name):
