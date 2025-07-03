@@ -179,7 +179,7 @@ def trigger_lambda(workflow_data, function_name):
     # Create payload with credentials
     payload = build_faasr_payload(workflow_data)
     
-    print(payload['My_Minio_Bucket_ACCESS_KEY'] == "Q3AM3UQ867SPQQA43P2F")
+    # print(payload['My_Minio_Bucket_ACCESS_KEY'] == "Q3AM3UQ867SPQQA43P2F")
 
     # Create Lambda client
     try:
