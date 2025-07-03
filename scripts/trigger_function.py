@@ -178,10 +178,12 @@ def trigger_lambda(workflow_data, function_name):
     # Invoke function
     try:
         print(f"Debug: Invoking Lambda function: {lambda_function_name}")
+        payload_json = json.dumps(payload)
+        print(f"Debug: Lambda payload: {payload_json}")
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
             InvocationType='RequestResponse',  # Synchronous invocation to get error responses
-            Payload=json.dumps(payload)
+            Payload=payload_json
         )
         
         print(f"Debug: Lambda response status: {response.get('StatusCode')}")
