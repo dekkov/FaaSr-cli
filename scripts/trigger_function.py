@@ -179,7 +179,7 @@ def trigger_lambda(workflow_data, function_name):
     # Create payload with credentials
     payload = build_faasr_payload(workflow_data)
     
-
+    print(payload)
     # Create Lambda client
     try:
         lambda_client = boto3.client(
