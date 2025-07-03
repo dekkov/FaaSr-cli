@@ -14,8 +14,8 @@
             "Bucket": "hoang",
             "Region": "us-east-1",
             "Writable": "TRUE",
-            "AccessKey": "",
-            "SecretKey": ""
+            "AccessKey": "My_Minio_Bucket_ACCESS_KEY",
+            "SecretKey": "My_Minio_Bucket_SECRET_KEY"
         }
     },
     "FunctionList": {

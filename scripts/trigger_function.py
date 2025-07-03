@@ -42,7 +42,7 @@ def get_credentials():
 def build_faasr_payload(workflow_data, mask_secrets_for_github=False):
     # Start with credentials at the top
     payload = get_credentials().copy()
-    
+
     # Add workflow data (excluding _workflow_file)
     workflow_copy = workflow_data.copy()
     if '_workflow_file' in workflow_copy:
@@ -167,6 +167,8 @@ def trigger_lambda(workflow_data, function_name):
     # Create payload with credentials
     payload = build_faasr_payload(workflow_data)
     
+    print(payload['DataStores']['My_Minio_Bucket']['AccessKey'] == os.getenv('MINIO_ACCESS_KEY'))
+
     # Create Lambda client
     try:
         lambda_client = boto3.client(
