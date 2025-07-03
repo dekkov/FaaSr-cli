@@ -269,8 +269,8 @@ def deploy_to_aws(workflow_data):
                     PackageType='Image',
                     Code={'ImageUri': '145342739029.dkr.ecr.us-east-1.amazonaws.com/aws-lambda-tidyverse:latest'},
                     Role=role_arn,
-                    Timeout=300,
-                    MemorySize=256,
+                    Timeout=900,  # Increased from 300 to 900 seconds (15 minutes)
+                    MemorySize=1024,  # Increased from 256 MB to 1024 MB for R execution
                     Environment={'Variables': environment_vars}
                 )
                 print(f"Successfully created {func_name} on AWS Lambda")
