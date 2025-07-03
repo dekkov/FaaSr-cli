@@ -179,7 +179,6 @@ def trigger_lambda(workflow_data, function_name):
     # Create payload with credentials
     payload = build_faasr_payload(workflow_data)
     
-    # print(payload['My_Minio_Bucket_ACCESS_KEY'] == "Q3AM3UQ867SPQQA43P2F")
 
     # Create Lambda client
     try:
@@ -193,40 +192,23 @@ def trigger_lambda(workflow_data, function_name):
         print(f"Error creating Lambda client: {str(e)}")
         sys.exit(1)
     
-    # Invoke function with response
+    # Invoke function asynchronously
     try:
-        print(f"Debug: Invoking Lambda function: {lambda_function_name}")
+        print(f"Debug: Invoking Lambda function asynchronously: {lambda_function_name}")
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
-            InvocationType='RequestResponse',  # Synchronous invocation to get response
+            InvocationType='Event',  # Asynchronous invocation
             Payload=json.dumps(payload)
         )
         
         print(f"Debug: Lambda response status: {response.get('StatusCode')}")
         
-        # For synchronous invocations, check status and handle errors
-        if response['StatusCode'] == 200:
-            # Check if there was a function error
-            if 'FunctionError' in response:
-                error_type = response['FunctionError']
-                payload_response = json.loads(response['Payload'].read())
-                print(f"Lambda function error ({error_type}): {payload_response}")
-                sys.exit(1)
-            else:
-                print(f"✓ Successfully executed Lambda function: {lambda_function_name}")
-                # Print the response payload
-                payload_response = response['Payload'].read()
-                if payload_response:
-                    response_text = payload_response.decode('utf-8')
-                    print(f"Function response: {response_text}")
-                else:
-                    print("Function completed successfully (no response payload)")
+        # For asynchronous invocations, just check if the invocation was accepted
+        if response['StatusCode'] == 202:
+            print(f"✓ Successfully triggered Lambda function: {lambda_function_name}")
+            print("Function is running asynchronously - check CloudWatch logs for execution details")
         else:
             print(f"✗ Lambda function invocation failed with status: {response['StatusCode']}")
-            if 'Payload' in response:
-                payload_content = response['Payload'].read()
-                if payload_content:
-                    print(f"Response payload: {payload_content.decode('utf-8')}")
             sys.exit(1)
             
     except lambda_client.exceptions.ResourceNotFoundException:
