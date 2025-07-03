@@ -279,7 +279,19 @@ def deploy_to_aws(workflow_data):
                     FunctionName=func_name,
                     ImageUri='145342739029.dkr.ecr.us-east-1.amazonaws.com/aws-lambda-tidyverse:latest'
                 )
-                # Also update environment variables
+                
+                # Wait for the function update to complete before updating configuration
+                print(f"Waiting for {func_name} code update to complete...")
+                waiter = lambda_client.get_waiter('function_updated')
+                waiter.wait(
+                    FunctionName=func_name,
+                    WaiterConfig={
+                        'Delay': 5,  # Check every 5 seconds
+                        'MaxAttempts': 60  # Wait up to 5 minutes
+                    }
+                )
+                
+                # Now update environment variables
                 lambda_client.update_function_configuration(
                     FunctionName=func_name,
                     Environment={'Variables': environment_vars}
