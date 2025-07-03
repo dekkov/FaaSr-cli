@@ -145,7 +145,7 @@ def deploy_to_github(workflow_data):
         # Create secret payload and set up secrets/variables
         secret_payload = create_secret_payload(workflow_data)
         required_secrets = {"SECRET_PAYLOAD": secret_payload}
-        vars = {"PAYLOAD_REPO": f"{repo_name}/{json_prefix}.json"}
+        vars = {f"{json_prefix}_PAYLOAD_REPO": f"{repo_name}/{json_prefix}.json"}
         
         ensure_github_secrets_and_vars(repo, required_secrets, vars, github_token)
         
@@ -169,8 +169,7 @@ jobs:
     env:
       SECRET_PAYLOAD: ${{{{ secrets.SECRET_PAYLOAD }}}}
       GITHUB_PAT: ${{{{ secrets.PAT }}}}
-      PAYLOAD_REPO: ${{{{ vars.PAYLOAD_REPO }}}}
-      JSON_PREFIX: {json_prefix}
+      PAYLOAD_REPO: ${{{{ vars.{json_prefix}_PAYLOAD_REPO }}}}
       PAYLOAD: ${{{{ github.event.inputs.PAYLOAD }}}}
     steps:
     - name: run Rscript
