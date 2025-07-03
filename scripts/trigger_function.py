@@ -155,13 +155,7 @@ def trigger_lambda(workflow_data, function_name):
     # Use function name directly
     lambda_function_name = function_name
     
-    # Validate credentials
-    if not aws_access_key or not aws_secret_key:
-        print("Error: AWS credentials not found in environment variables")
-        print("Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables")
-        sys.exit(1)
-    
-    # Create payload with credentials
+    # Create payload with credentials (same as R implementation)
     payload = workflow_data.copy()
     if '_workflow_file' in payload:
         del payload['_workflow_file']
@@ -177,7 +171,6 @@ def trigger_lambda(workflow_data, function_name):
             aws_secret_access_key=aws_secret_key,
             region_name=aws_region
         )
-        print(f"Debug: Lambda client created successfully")
     except Exception as e:
         print(f"Error creating Lambda client: {str(e)}")
         sys.exit(1)
@@ -187,15 +180,26 @@ def trigger_lambda(workflow_data, function_name):
         print(f"Debug: Invoking Lambda function: {lambda_function_name}")
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
-            InvocationType='Event',  # Asynchronous invocation
+            InvocationType='RequestResponse',  # Synchronous invocation to get error responses
             Payload=json.dumps(payload)
         )
         
         print(f"Debug: Lambda response status: {response.get('StatusCode')}")
         
-        # For async invocations, we only get status code, no payload or function errors
-        if response['StatusCode'] == 202:
-            print(f"Successfully triggered Lambda function asynchronously: {lambda_function_name}")
+        # For synchronous invocations, check status and handle errors
+        if response['StatusCode'] == 200:
+            # Check if there was a function error
+            if 'FunctionError' in response:
+                error_type = response['FunctionError']
+                payload_response = json.loads(response['Payload'].read())
+                print(f"Lambda function error ({error_type}): {payload_response}")
+                sys.exit(1)
+            else:
+                print(f"Successfully triggered Lambda function: {lambda_function_name}")
+                # Optionally print the response payload
+                payload_response = response['Payload'].read()
+                if payload_response:
+                    print(f"Function response: {payload_response.decode('utf-8')}")
         else:
             print(f"Lambda function invocation failed with status: {response['StatusCode']}")
             sys.exit(1)
@@ -203,14 +207,9 @@ def trigger_lambda(workflow_data, function_name):
     except lambda_client.exceptions.ResourceNotFoundException:
         print(f"Error: Lambda function '{lambda_function_name}' not found")
         print(f"Make sure the function exists in region '{aws_region}'")
-        print(f"You can deploy it using: python scripts/deploy_functions.py --workflow-file {workflow_data['_workflow_file']}")
-        sys.exit(1)
-    except lambda_client.exceptions.InvalidParameterValueException as e:
-        print(f"Error: Invalid parameter - {str(e)}")
         sys.exit(1)
     except Exception as e:
         print(f"Error triggering Lambda function: {str(e)}")
-        print(f"Error type: {type(e).__name__}")
         sys.exit(1)
 
 def trigger_openwhisk(workflow_data, function_name):
