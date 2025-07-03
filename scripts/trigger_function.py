@@ -51,10 +51,8 @@ def trigger_github_actions(workflow_data, function_name):
     repo = f"{username}/{reponame}"
     branch = server_config['Branch']
     
-    # Get the JSON file prefix for workflow name
-    workflow_file = workflow_data.get('_workflow_file', 'workflow.json')
-    json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
-    workflow_name = f"{json_prefix}_{function_name}.yml"
+    # Use function name directly for workflow name
+    workflow_name = f"{function_name}.yml"
 
     
     # Create payload with credentials
@@ -154,11 +152,8 @@ def trigger_lambda(workflow_data, function_name):
     aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
     aws_region = server_config.get('Region', 'us-east-1')
     
-    # Get the JSON file prefix for function name
-    workflow_file = workflow_data.get('_workflow_file', 'workflow.json')
-    json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
-    lambda_function_name = f"{function_name}"
-    
+    # Use function name directly
+    lambda_function_name = function_name
     
     # Validate credentials
     if not aws_access_key or not aws_secret_key:
@@ -208,7 +203,7 @@ def trigger_lambda(workflow_data, function_name):
     except lambda_client.exceptions.ResourceNotFoundException:
         print(f"Error: Lambda function '{lambda_function_name}' not found")
         print(f"Make sure the function exists in region '{aws_region}'")
-        print(f"You can deploy it using: python scripts/deploy_functions.py --workflow-file {workflow_file}")
+        print(f"You can deploy it using: python scripts/deploy_functions.py --workflow-file {workflow_data['_workflow_file']}")
         sys.exit(1)
     except lambda_client.exceptions.InvalidParameterValueException as e:
         print(f"Error: Invalid parameter - {str(e)}")
