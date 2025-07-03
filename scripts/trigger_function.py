@@ -210,7 +210,10 @@ def trigger_lambda(workflow_data, function_name):
             if 'FunctionError' in response:
                 error_type = response['FunctionError']
                 payload_response = json.loads(response['Payload'].read())
-                print(f"Lambda function error ({error_type}): {payload_response}")
+                print(f"Lambda function error ({error_type}):")
+                print("=" * 60)
+                print(json.dumps(payload_response, indent=2))
+                print("=" * 60)
                 sys.exit(1)
             else:
                 print(f"✓ Successfully executed Lambda function: {lambda_function_name}")
