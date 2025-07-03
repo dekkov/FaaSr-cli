@@ -167,7 +167,7 @@ def trigger_lambda(workflow_data, function_name):
     # Create payload with credentials
     payload = build_faasr_payload(workflow_data)
     
-    print(payload['DataStores']['My_Minio_Bucket']['AccessKey'] == os.getenv('MINIO_ACCESS_KEY'))
+    print(payload['My_Minio_Bucket_ACCESS_KEY'] == os.getenv('MINIO_ACCESS_KEY'))
 
     # Create Lambda client
     try:
@@ -184,8 +184,6 @@ def trigger_lambda(workflow_data, function_name):
     # Invoke function with response
     try:
         print(f"Debug: Invoking Lambda function: {lambda_function_name}")
-        print("Payload being sent to Lambda:")
-        print(json.dumps(payload, indent=2))
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
             InvocationType='RequestResponse',  # Synchronous invocation to get response
