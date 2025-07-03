@@ -161,7 +161,6 @@ def trigger_lambda(workflow_data, function_name):
         del payload['_workflow_file']
     
     credentials = get_credentials()
-    print(credentials)
     payload.update(credentials)
     
     # Create Lambda client
