@@ -121,6 +121,8 @@ def create_secret_payload(workflow_data):
         "My_Lambda_Account_SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY', ''),
     }
     
+    print(credentials)
+
     # Create the complete workflow payload by merging the original workflow with credentials
     # Remove the _workflow_file field as it's not part of the FaaSr schema
     complete_payload = workflow_data.copy()
