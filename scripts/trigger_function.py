@@ -178,8 +178,14 @@ def trigger_lambda(workflow_data, function_name):
     # Invoke function with response
     try:
         print(f"Debug: Invoking Lambda function: {lambda_function_name}")
-        print("Payload being sent to Lambda:")
+        print(f"Debug: AWS Region: {aws_region}")
+        print(f"Debug: Payload size: {len(json.dumps(payload))} bytes")
+        print("=" * 80)
+        print("PAYLOAD BEING SENT TO LAMBDA:")
+        print("=" * 80)
         print(json.dumps(payload, indent=2))
+        print("=" * 80)
+        
         response = lambda_client.invoke(
             FunctionName=lambda_function_name,
             InvocationType='RequestResponse',  # Synchronous invocation to get response
@@ -187,6 +193,9 @@ def trigger_lambda(workflow_data, function_name):
         )
         
         print(f"Debug: Lambda response status: {response.get('StatusCode')}")
+        print(f"Debug: Response metadata: {response.get('ResponseMetadata', {})}")
+        if 'LogResult' in response:
+            print(f"Debug: Execution logs available: Yes")
         
         # For synchronous invocations, check status and handle errors
         if response['StatusCode'] == 200:
@@ -194,7 +203,11 @@ def trigger_lambda(workflow_data, function_name):
             if 'FunctionError' in response:
                 error_type = response['FunctionError']
                 payload_response = json.loads(response['Payload'].read())
-                print(f"Lambda function error ({error_type}): {payload_response}")
+                print("=" * 80)
+                print(f"LAMBDA FUNCTION ERROR ({error_type}):")
+                print("=" * 80)
+                print(json.dumps(payload_response, indent=2))
+                print("=" * 80)
                 sys.exit(1)
             else:
                 print(f"✓ Successfully executed Lambda function: {lambda_function_name}")
@@ -202,7 +215,17 @@ def trigger_lambda(workflow_data, function_name):
                 payload_response = response['Payload'].read()
                 if payload_response:
                     response_text = payload_response.decode('utf-8')
-                    print(f"Function response: {response_text}")
+                    print("=" * 80)
+                    print("LAMBDA FUNCTION RESPONSE:")
+                    print("=" * 80)
+                    try:
+                        # Try to pretty-print if it's JSON
+                        response_json = json.loads(response_text)
+                        print(json.dumps(response_json, indent=2))
+                    except json.JSONDecodeError:
+                        # If not JSON, print as-is
+                        print(response_text)
+                    print("=" * 80)
                 else:
                     print("Function completed successfully (no response payload)")
         else:
@@ -210,7 +233,11 @@ def trigger_lambda(workflow_data, function_name):
             if 'Payload' in response:
                 payload_content = response['Payload'].read()
                 if payload_content:
-                    print(f"Response payload: {payload_content.decode('utf-8')}")
+                    print("=" * 80)
+                    print("ERROR RESPONSE PAYLOAD:")
+                    print("=" * 80)
+                    print(payload_content.decode('utf-8'))
+                    print("=" * 80)
             sys.exit(1)
             
     except lambda_client.exceptions.ResourceNotFoundException:
