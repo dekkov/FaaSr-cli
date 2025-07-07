@@ -383,11 +383,9 @@ def deploy_to_ow(workflow_data):
     # Get OpenWhisk credentials
     api_host, namespace, ssl = get_openwhisk_credentials(workflow_data)
     
-    # Get OpenWhisk API key from environment variable
-    ow_api_key = os.getenv('OW_API_KEY')
-    if not ow_api_key:
-        print("Error: OW_API_KEY environment variable not set")
-        sys.exit(1)
+    # Get the JSON file prefix
+    workflow_file = workflow_data['_workflow_file']
+    json_prefix = os.path.splitext(os.path.basename(workflow_file))[0]
     
     # Filter functions that should be deployed to OpenWhisk
     ow_functions = {}
@@ -401,87 +399,50 @@ def deploy_to_ow(workflow_data):
         print("No functions found for OpenWhisk deployment")
         return
     
-    # Create secret payload (same as other deployments)
-    secret_payload = create_secret_payload(workflow_data)
+    # Set up wsk properties
+    subprocess.run(f"wsk property set --apihost {api_host}", shell=True)
+    # Skip auth setting for OpenWhisk without authentication
+    print("Using OpenWhisk without authentication")
+    # Always use insecure flag to bypass certificate issues
+    subprocess.run("wsk property set --insecure", shell=True)
     
-    # Set up the base URL for OpenWhisk API
-    protocol = "https" if ssl else "http"
-    base_url = f"https://{api_host}/api/v1/namespaces/{namespace}/actions"
+    # Set environment variable to handle certificate issue
+    env = os.environ.copy()
+    env['GODEBUG'] = 'x509ignoreCN=0'
     
-    # Headers for API requests
-    headers = {
-        "Authorization": f"Basic {base64.b64encode(ow_api_key.encode()).decode()}",
-        "Content-Type": "application/json"
-    }
-    
-    # Deploy each function
+    # Process each function in the workflow
     for func_name, func_data in ow_functions.items():
         try:
             actual_func_name = func_data['FunctionName']
+            # Create prefixed function name
+            prefixed_func_name = f"{json_prefix}_{func_name}"
             
-            # Get container image for this function
-            container_image = workflow_data['ActionContainers'][func_name]
-            
-            # Prepare the action configuration
-            action_config = {
-                "exec": {
-                    "kind": "blackbox",
-                    "image": container_image,
-                    "code": ""
-                },
-                "parameters": [
-                    {
-                        "key": "SECRET_PAYLOAD",
-                        "value": secret_payload
-                    }
-                ],
-                "limits": {
-                    "timeout": 300000,  # 5 minutes 
-                    "memory": 512,      # 512 MB
-                    "logs": 10          # 10 MB log size
-                },
-                "annotations": [
-                    {
-                        "key": "description",
-                        "value": f"FaaSr function: {actual_func_name}"
-                    }
-                ]
-            }
-            
-            # Try to create or update the action
-            action_url = f"{base_url}/{func_name}"
-            
-            # First try to get the existing action
-            get_response = requests.get(action_url, headers=headers)
-            
-            if get_response.status_code == 200:
-                # Action exists, update it
-                print(f"Action {func_name} exists, updating...")
-                put_response = requests.put(action_url, headers=headers, json=action_config)
+            # Create or update OpenWhisk action using wsk CLI
+            try:
+                # First check if action exists (add --insecure flag)
+                check_cmd = f"wsk action get {prefixed_func_name} --insecure >/dev/null 2>&1"
+                exists = subprocess.run(check_cmd, shell=True, env=env).returncode == 0
                 
-                if put_response.status_code == 200:
-                    print(f"Successfully updated {actual_func_name} on OpenWhisk")
+                if exists:
+                    # Update existing action (add --insecure flag)
+                    cmd = f"wsk action update {prefixed_func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 else:
-                    print(f"Error updating {func_name}: {put_response.status_code} - {put_response.text}")
-                    sys.exit(1)
-            
-            elif get_response.status_code == 404:
-                # Action doesn't exist, create it
-                print(f"Action {func_name} doesn't exist, creating...")
-                put_response = requests.put(action_url, headers=headers, json=action_config)
+                    # Create new action (add --insecure flag)
+                    cmd = f"wsk action create {prefixed_func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 
-                if put_response.status_code == 200:
-                    print(f"Successfully created {actual_func_name} on OpenWhisk")
-                else:
-                    print(f"Error creating {func_name}: {put_response.status_code} - {put_response.text}")
-                    sys.exit(1)
-            
-            else:
-                print(f"Error checking action {func_name}: {get_response.status_code} - {get_response.text}")
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
+                
+                if result.returncode != 0:
+                    raise Exception(f"Failed to {'update' if exists else 'create'} action: {result.stderr}")
+                
+                print(f"Successfully deployed {prefixed_func_name} to OpenWhisk")
+                
+            except Exception as e:
+                print(f"Error deploying {prefixed_func_name} to OpenWhisk: {str(e)}")
                 sys.exit(1)
                 
         except Exception as e:
-            print(f"Error deploying {func_name} to OpenWhisk: {str(e)}")
+            print(f"Error processing {func_name}: {str(e)}")
             sys.exit(1)
 
 def main():
