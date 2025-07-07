@@ -49,33 +49,60 @@ def build_faasr_payload(workflow_data, mask_secrets_for_github=False):
         del workflow_copy['_workflow_file']
     payload.update(workflow_copy)
     
-    # Ensure environment credentials take precedence over JSON file values
+    # Get environment credentials
     credentials = get_credentials()
     
-    # Override DataStore credentials with environment variables
+    # Replace placeholder values in ComputeServers with actual credentials based on FaaSType
+    if 'ComputeServers' in payload:
+        for server_key, server_config in payload['ComputeServers'].items():
+            faas_type = server_config.get('FaaSType', '')
+            
+            if mask_secrets_for_github:
+                # Mask secrets for GitHub Actions (existing logic)
+                if faas_type == 'GitHubActions':
+                    server_config['Token'] = f"{server_key}_TOKEN"
+                elif faas_type == 'Lambda':
+                    server_config['AccessKey'] = f"{server_key}_ACCESS_KEY"
+                    server_config['SecretKey'] = f"{server_key}_SECRET_KEY"
+                elif faas_type == 'OpenWhisk':
+                    server_config['API.key'] = f"{server_key}_API_KEY"
+            else:
+                # Replace placeholder values with actual credentials
+                if faas_type == 'Lambda':
+                    # Replace Lambda AccessKey/SecretKey placeholders
+                    if 'AccessKey' in server_config and server_config['AccessKey'] == f"{server_key}_ACCESS_KEY":
+                        if credentials['My_Lambda_Account_ACCESS_KEY']:
+                            server_config['AccessKey'] = credentials['My_Lambda_Account_ACCESS_KEY']
+                    if 'SecretKey' in server_config and server_config['SecretKey'] == f"{server_key}_SECRET_KEY":
+                        if credentials['My_Lambda_Account_SECRET_KEY']:
+                            server_config['SecretKey'] = credentials['My_Lambda_Account_SECRET_KEY']
+                elif faas_type == 'GitHubActions':
+                    # Replace GitHub Token placeholder
+                    if 'Token' in server_config and server_config['Token'] == f"{server_key}_TOKEN":
+                        if credentials['My_GitHub_Account_TOKEN']:
+                            server_config['Token'] = credentials['My_GitHub_Account_TOKEN']
+                elif faas_type == 'OpenWhisk':
+                    # Replace OpenWhisk API.key placeholder
+                    if 'API.key' in server_config and server_config['API.key'] == f"{server_key}_API_KEY":
+                        if credentials['My_OW_Account_API_KEY']:
+                            server_config['API.key'] = credentials['My_OW_Account_API_KEY']
+
+    # Replace placeholder values in DataStores with actual credentials
     if 'DataStores' in payload:
         for store_key, store_config in payload['DataStores'].items():
-            if store_key == 'My_Minio_Bucket':
-                if credentials['My_Minio_Bucket_ACCESS_KEY']:
-                    store_config['AccessKey'] = credentials['My_Minio_Bucket_ACCESS_KEY']
-                if credentials['My_Minio_Bucket_SECRET_KEY']:
-                    store_config['SecretKey'] = credentials['My_Minio_Bucket_SECRET_KEY']
-
-    if mask_secrets_for_github:
-        # Mask secrets for GitHub Actions
-        for server_key in payload['ComputeServers']:
-            server = payload['ComputeServers'][server_key]
-            if server['FaaSType'] == 'GitHubActions':
-                server['Token'] = f"{server_key}_TOKEN"
-            elif server['FaaSType'] == 'Lambda':
-                server['AccessKey'] = f"{server_key}_ACCESS_KEY"
-                server['SecretKey'] = f"{server_key}_SECRET_KEY"
-            elif server['FaaSType'] == 'OpenWhisk':
-                server['API.key'] = f"{server_key}_API_KEY"
-        for store_key in payload['DataStores']:
-            store = payload['DataStores'][store_key]
-            store['AccessKey'] = f"{store_key}_ACCESS_KEY"
-            store['SecretKey'] = f"{store_key}_SECRET_KEY"
+            if mask_secrets_for_github:
+                # Mask secrets for GitHub Actions (existing logic)
+                store_config['AccessKey'] = f"{store_key}_ACCESS_KEY"
+                store_config['SecretKey'] = f"{store_key}_SECRET_KEY"
+            else:
+                # Replace placeholder values with actual credentials
+                if 'AccessKey' in store_config and store_config['AccessKey'] == f"{store_key}_ACCESS_KEY":
+                    if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_ACCESS_KEY']:
+                        store_config['AccessKey'] = credentials['My_Minio_Bucket_ACCESS_KEY']
+                if 'SecretKey' in store_config and store_config['SecretKey'] == f"{store_key}_SECRET_KEY":
+                    if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_SECRET_KEY']:
+                        store_config['SecretKey'] = credentials['My_Minio_Bucket_SECRET_KEY']
+    
     return payload
 
 def trigger_github_actions(workflow_data, function_name):
@@ -179,7 +206,6 @@ def trigger_lambda(workflow_data, function_name):
     # Create payload with credentials
     payload = build_faasr_payload(workflow_data)
     
-    print(payload)
     # Create Lambda client
     try:
         lambda_client = boto3.client(
