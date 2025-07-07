@@ -295,12 +295,11 @@ def trigger_openwhisk(workflow_data, function_name):
         print(f"Debug: Using namespace: {namespace}")
         print(f"Debug: URL: {url}")
         
-        # Make REST API call (matching R implementation)
         response = requests.post(
             url=url,
             auth=(api_key_parts[0], api_key_parts[1]),  # HTTP Basic Auth
             headers=headers,
-            json=payload,
+            json=json.dumps(payload),
             verify=ssl  # SSL verification based on config
         )
         
