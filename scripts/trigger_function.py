@@ -272,9 +272,12 @@ def trigger_openwhisk(workflow_data, function_name):
         sys.exit(1)
     
     # Add protocol to endpoint if not present
+    # Force HTTPS since the server seems to require it regardless of SSL setting
     if not endpoint.startswith(('http://', 'https://')):
-        protocol = 'https://' if ssl else 'http://'
-        endpoint = protocol + endpoint
+        endpoint = 'https://' + endpoint
+    elif endpoint.startswith('http://'):
+        # Convert http to https if server requires it
+        endpoint = endpoint.replace('http://', 'https://')
     
     # Construct URL (matching R implementation)
     url = f"{endpoint}/api/v1/namespaces/{namespace}/actions/{function_name}?blocking=false&result=false"
