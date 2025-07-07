@@ -279,10 +279,9 @@ def trigger_openwhisk(workflow_data, function_name):
         # Convert http to https if server requires it
         endpoint = endpoint.replace('http://', 'https://')
     
-    # Construct URL (matching R implementation)
     url = f"{endpoint}/api/v1/namespaces/{namespace}/actions/{function_name}?blocking=false&result=false"
     
-    # Create payload (matching R implementation)
+  
     payload = build_faasr_payload(workflow_data)
     
     # Set headers
