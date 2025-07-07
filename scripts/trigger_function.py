@@ -299,7 +299,7 @@ def trigger_openwhisk(workflow_data, function_name):
             url=url,
             auth=(api_key_parts[0], api_key_parts[1]),  # HTTP Basic Auth
             headers=headers,
-            json=json.dumps(payload),
+            json=payload,
             verify=ssl  # SSL verification based on config
         )
         
