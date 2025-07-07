@@ -414,31 +414,29 @@ def deploy_to_ow(workflow_data):
     for func_name, func_data in ow_functions.items():
         try:
             actual_func_name = func_data['FunctionName']
-            # Create prefixed function name
-            prefixed_func_name = f"{json_prefix}_{func_name}"
             
             # Create or update OpenWhisk action using wsk CLI
             try:
                 # First check if action exists (add --insecure flag)
-                check_cmd = f"wsk action get {prefixed_func_name} --insecure >/dev/null 2>&1"
+                check_cmd = f"wsk action get {func_name} --insecure >/dev/null 2>&1"
                 exists = subprocess.run(check_cmd, shell=True, env=env).returncode == 0
                 
                 if exists:
                     # Update existing action (add --insecure flag)
-                    cmd = f"wsk action update {prefixed_func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                    cmd = f"wsk action update {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 else:
                     # Create new action (add --insecure flag)
-                    cmd = f"wsk action create {prefixed_func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                    cmd = f"wsk action create {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
                 
                 if result.returncode != 0:
                     raise Exception(f"Failed to {'update' if exists else 'create'} action: {result.stderr}")
                 
-                print(f"Successfully deployed {prefixed_func_name} to OpenWhisk")
+                print(f"Successfully deployed {func_name} to OpenWhisk")
                 
             except Exception as e:
-                print(f"Error deploying {prefixed_func_name} to OpenWhisk: {str(e)}")
+                print(f"Error deploying {func_name} to OpenWhisk: {str(e)}")
                 sys.exit(1)
                 
         except Exception as e:
