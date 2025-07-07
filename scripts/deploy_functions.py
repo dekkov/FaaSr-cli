@@ -406,7 +406,7 @@ def deploy_to_ow(workflow_data):
     
     # Set up the base URL for OpenWhisk API
     protocol = "https" if ssl else "http"
-    base_url = f"{protocol}://{api_host}/api/v1/namespaces/{namespace}/actions"
+    base_url = f"https://{api_host}/api/v1/namespaces/{namespace}/actions"
     
     # Headers for API requests
     headers = {
