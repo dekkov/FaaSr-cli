@@ -86,8 +86,9 @@ def create_secret_payload(workflow_data):
     """
     Create a secret payload that combines all necessary credentials and the complete workflow configuration.
     This payload will be stored as a GitHub secret and used by the deployed functions.
+    This function matches the logic from build_faasr_payload in trigger_function.py
     """
-    # Get all required credentials
+    # Start with credentials at the top
     credentials = {
         "My_GitHub_Account_TOKEN": get_github_token(),
         "My_Minio_Bucket_ACCESS_KEY": os.getenv('MINIO_ACCESS_KEY'),
@@ -97,16 +98,51 @@ def create_secret_payload(workflow_data):
         "My_Lambda_Account_SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY', ''),
     }
     
-    # Create the complete workflow payload by merging the original workflow with credentials
-    # Remove the _workflow_file field as it's not part of the FaaSr schema
-    complete_payload = workflow_data.copy()
-    if '_workflow_file' in complete_payload:
-        del complete_payload['_workflow_file']
+    payload = credentials.copy()
+
+    # Add workflow data (excluding _workflow_file)
+    workflow_copy = workflow_data.copy()
+    if '_workflow_file' in workflow_copy:
+        del workflow_copy['_workflow_file']
+    payload.update(workflow_copy)
     
-    # Add credentials to the payload
-    complete_payload.update(credentials)
+    # Replace placeholder values in ComputeServers with actual credentials
+    if 'ComputeServers' in payload:
+        for server_key, server_config in payload['ComputeServers'].items():
+            faas_type = server_config.get('FaaSType', '')
+            
+            # Replace placeholder values with actual credentials
+            if faas_type == 'Lambda':
+                # Replace Lambda AccessKey/SecretKey placeholders
+                if 'AccessKey' in server_config and server_config['AccessKey'] == f"{server_key}_ACCESS_KEY":
+                    if credentials['My_Lambda_Account_ACCESS_KEY']:
+                        server_config['AccessKey'] = credentials['My_Lambda_Account_ACCESS_KEY']
+                if 'SecretKey' in server_config and server_config['SecretKey'] == f"{server_key}_SECRET_KEY":
+                    if credentials['My_Lambda_Account_SECRET_KEY']:
+                        server_config['SecretKey'] = credentials['My_Lambda_Account_SECRET_KEY']
+            elif faas_type == 'GitHubActions':
+                # Replace GitHub Token placeholder
+                if 'Token' in server_config and server_config['Token'] == f"{server_key}_TOKEN":
+                    if credentials['My_GitHub_Account_TOKEN']:
+                        server_config['Token'] = credentials['My_GitHub_Account_TOKEN']
+            elif faas_type == 'OpenWhisk':
+                # Replace OpenWhisk API.key placeholder
+                if 'API.key' in server_config and server_config['API.key'] == f"{server_key}_API_KEY":
+                    if credentials['My_OW_Account_API_KEY']:
+                        server_config['API.key'] = credentials['My_OW_Account_API_KEY']
+
+    # Replace placeholder values in DataStores with actual credentials
+    if 'DataStores' in payload:
+        for store_key, store_config in payload['DataStores'].items():
+            # Replace placeholder values with actual credentials
+            if 'AccessKey' in store_config and store_config['AccessKey'] == f"{store_key}_ACCESS_KEY":
+                if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_ACCESS_KEY']:
+                    store_config['AccessKey'] = credentials['My_Minio_Bucket_ACCESS_KEY']
+            if 'SecretKey' in store_config and store_config['SecretKey'] == f"{store_key}_SECRET_KEY":
+                if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_SECRET_KEY']:
+                    store_config['SecretKey'] = credentials['My_Minio_Bucket_SECRET_KEY']
     
-    return json.dumps(complete_payload)
+    return json.dumps(payload)
 
 def deploy_to_github(workflow_data):
     """Deploy functions to GitHub Actions."""
@@ -347,6 +383,12 @@ def deploy_to_ow(workflow_data):
     # Get OpenWhisk credentials
     api_host, namespace, ssl = get_openwhisk_credentials(workflow_data)
     
+    # Get OpenWhisk API key from environment variable
+    ow_api_key = os.getenv('OW_API_KEY')
+    if not ow_api_key:
+        print("Error: OW_API_KEY environment variable not set")
+        sys.exit(1)
+    
     # Filter functions that should be deployed to OpenWhisk
     ow_functions = {}
     for func_name, func_data in workflow_data['FunctionList'].items():
@@ -359,48 +401,87 @@ def deploy_to_ow(workflow_data):
         print("No functions found for OpenWhisk deployment")
         return
     
-    # Set up wsk properties
-    subprocess.run(f"wsk property set --apihost {api_host}", shell=True)
-    # Skip auth setting for OpenWhisk without authentication
-    print("Using OpenWhisk without authentication")
-    # Always use insecure flag to bypass certificate issues
-    subprocess.run("wsk property set --insecure", shell=True)
+    # Create secret payload (same as other deployments)
+    secret_payload = create_secret_payload(workflow_data)
     
-    # Set environment variable to handle certificate issue
-    env = os.environ.copy()
-    env['GODEBUG'] = 'x509ignoreCN=0'
+    # Set up the base URL for OpenWhisk API
+    protocol = "https" if ssl else "http"
+    base_url = f"{protocol}://{api_host}/api/v1/namespaces/{namespace}/actions"
     
-    # Process each function in the workflow
+    # Headers for API requests
+    headers = {
+        "Authorization": f"Basic {base64.b64encode(ow_api_key.encode()).decode()}",
+        "Content-Type": "application/json"
+    }
+    
+    # Deploy each function
     for func_name, func_data in ow_functions.items():
         try:
             actual_func_name = func_data['FunctionName']
             
-            # Create or update OpenWhisk action using wsk CLI
-            try:
-                # First check if action exists (add --insecure flag)
-                check_cmd = f"wsk action get {func_name} --insecure >/dev/null 2>&1"
-                exists = subprocess.run(check_cmd, shell=True, env=env).returncode == 0
+            # Get container image for this function
+            container_image = workflow_data['ActionContainers'][func_name]
+            
+            # Prepare the action configuration
+            action_config = {
+                "exec": {
+                    "kind": "blackbox",
+                    "image": container_image,
+                    "code": ""
+                },
+                "parameters": [
+                    {
+                        "key": "SECRET_PAYLOAD",
+                        "value": secret_payload
+                    }
+                ],
+                "limits": {
+                    "timeout": 300000,  # 5 minutes 
+                    "memory": 512,      # 512 MB
+                    "logs": 10          # 10 MB log size
+                },
+                "annotations": [
+                    {
+                        "key": "description",
+                        "value": f"FaaSr function: {actual_func_name}"
+                    }
+                ]
+            }
+            
+            # Try to create or update the action
+            action_url = f"{base_url}/{func_name}"
+            
+            # First try to get the existing action
+            get_response = requests.get(action_url, headers=headers)
+            
+            if get_response.status_code == 200:
+                # Action exists, update it
+                print(f"Action {func_name} exists, updating...")
+                put_response = requests.put(action_url, headers=headers, json=action_config)
                 
-                if exists:
-                    # Update existing action (add --insecure flag)
-                    cmd = f"wsk action update {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                if put_response.status_code == 200:
+                    print(f"Successfully updated {actual_func_name} on OpenWhisk")
                 else:
-                    # Create new action (add --insecure flag)
-                    cmd = f"wsk action create {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                    print(f"Error updating {func_name}: {put_response.status_code} - {put_response.text}")
+                    sys.exit(1)
+            
+            elif get_response.status_code == 404:
+                # Action doesn't exist, create it
+                print(f"Action {func_name} doesn't exist, creating...")
+                put_response = requests.put(action_url, headers=headers, json=action_config)
                 
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
-                
-                if result.returncode != 0:
-                    raise Exception(f"Failed to {'update' if exists else 'create'} action: {result.stderr}")
-                
-                print(f"Successfully deployed {func_name} to OpenWhisk")
-                
-            except Exception as e:
-                print(f"Error deploying {func_name} to OpenWhisk: {str(e)}")
+                if put_response.status_code == 200:
+                    print(f"Successfully created {actual_func_name} on OpenWhisk")
+                else:
+                    print(f"Error creating {func_name}: {put_response.status_code} - {put_response.text}")
+                    sys.exit(1)
+            
+            else:
+                print(f"Error checking action {func_name}: {get_response.status_code} - {get_response.text}")
                 sys.exit(1)
                 
         except Exception as e:
-            print(f"Error processing {func_name}: {str(e)}")
+            print(f"Error deploying {func_name} to OpenWhisk: {str(e)}")
             sys.exit(1)
 
 def main():
