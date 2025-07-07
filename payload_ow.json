@@ -1,11 +1,10 @@
 {
-    "ComputeServers": {
-        "My_GitHub_Account": {
-            "FaaSType": "GitHubActions",
-            "UserName": "dekkov",
-            "ActionRepoName": "FaaSr-cli",
-            "Branch": "main",
-            "Token": "My_GitHub_Account_TOKEN"
+"ComputeServers": {
+        "My_OW_Account": {
+            "FaaSType": "OpenWhisk",
+            "Namespace": "hoang",
+            "SSL": "False",
+            "Endpoint": "ow.faasr.io:31002"
         }
     },
     "DataStores": {
@@ -13,15 +12,13 @@
             "Endpoint": "https://play.min.io",
             "Bucket": "hoang",
             "Region": "us-east-1",
-            "Writable": "TRUE",
-            "AccessKey": "My_Minio_Bucket_ACCESS_KEY",
-            "SecretKey": "My_Minio_Bucket_SECRET_KEY"
+            "Writable": "TRUE"
         }
     },
     "FunctionList": {
         "start": {
             "FunctionName": "create_sample_data",
-            "FaaSServer": "My_GitHub_Account",
+            "FaaSServer": "My_OW_Account",
             "Arguments": {
                 "folder": "tutorial",
                 "output1": "sample1.csv",
@@ -31,7 +28,7 @@
         },
         "sum": {
             "FunctionName": "compute_sum",
-            "FaaSServer": "My_GitHub_Account",
+            "FaaSServer": "My_OW_Account",
             "Arguments": {
                 "folder": "tutorial",
                 "input1": "sample1.csv",
@@ -44,8 +41,8 @@
         }
     },
     "ActionContainers": {
-        "start": "ghcr.io/faasr/github-actions-tidyverse",
-        "sum": "ghcr.io/faasr/github-actions-tidyverse"
+        "start": "faasr/openwhisk-tidyverse",
+        "sum": "faasr/openwhisk-tidyverse"
     },
     "FunctionGitRepo": {
         "create_sample_data": "FaaSr/FaaSr-tutorial",
