@@ -30,6 +30,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install boto3 requests
 
+      - name: Install OpenWhisk CLI
+        run: |
+          # Download and install the latest OpenWhisk CLI for Linux
+          wget -q https://github.com/apache/openwhisk-cli/releases/download/1.2.0/OpenWhisk_CLI-1.2.0-linux-amd64.tgz
+          tar -xzf OpenWhisk_CLI-1.2.0-linux-amd64.tgz
+          sudo mv wsk /usr/local/bin/wsk
+          sudo chmod +x /usr/local/bin/wsk
+          # Verify installation
+          wsk --help
+
       - name: Trigger function
         env:
             AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
