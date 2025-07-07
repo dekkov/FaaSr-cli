@@ -44,7 +44,5 @@ jobs:
           MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
           GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
-          wsk property set --auth $OW_API_KEY
-
-          # Run deployment
+          # Run deployment (Python script will handle wsk configuration)
           python scripts/deploy_functions.py --workflow-file ${{ github.event.inputs.workflow_file }} 

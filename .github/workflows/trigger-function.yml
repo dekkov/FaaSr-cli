@@ -44,14 +44,11 @@ jobs:
         env:
           OW_API_KEY: ${{ secrets.OW_API_KEY }}
         run: |
-          # Set authentication using API key
-          if [ -n "$OW_API_KEY" ]; then
-            wsk property set --auth "$OW_API_KEY"
-          fi
           # Set common wsk properties
           wsk property set --insecure
           # Set environment variable to handle certificate issues
           echo "GODEBUG=x509ignoreCN=0" >> $GITHUB_ENV
+          # Note: API host and auth will be set by the Python script from the workflow file
           # Verify configuration
           wsk property get
 
