@@ -40,6 +40,21 @@ jobs:
           # Verify installation
           wsk --help
 
+      - name: Configure OpenWhisk CLI
+        env:
+          OW_API_KEY: ${{ secrets.OW_API_KEY }}
+        run: |
+          # Set authentication using API key
+          if [ -n "$OW_API_KEY" ]; then
+            wsk property set --auth "$OW_API_KEY"
+          fi
+          # Set common wsk properties
+          wsk property set --insecure
+          # Set environment variable to handle certificate issues
+          echo "GODEBUG=x509ignoreCN=0" >> $GITHUB_ENV
+          # Verify configuration
+          wsk property get
+
       - name: Trigger function
         env:
             AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

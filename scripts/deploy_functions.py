@@ -401,8 +401,15 @@ def deploy_to_ow(workflow_data):
     
     # Set up wsk properties
     subprocess.run(f"wsk property set --apihost {api_host}", shell=True)
-    # Skip auth setting for OpenWhisk without authentication
-    print("Using OpenWhisk without authentication")
+    
+    # Set authentication using API key from environment variable
+    ow_api_key = os.getenv('OW_API_KEY')
+    if ow_api_key:
+        subprocess.run(f"wsk property set --auth {ow_api_key}", shell=True)
+        print("Using OpenWhisk with API key authentication")
+    else:
+        print("Using OpenWhisk without authentication")
+    
     # Always use insecure flag to bypass certificate issues
     subprocess.run("wsk property set --insecure", shell=True)
     
