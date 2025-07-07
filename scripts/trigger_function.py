@@ -256,59 +256,58 @@ def trigger_openwhisk(workflow_data, function_name):
     server_config = workflow_data['ComputeServers'][server_name]
     
     # Get OpenWhisk credentials from server config
-    api_host = server_config['Endpoint']
+    endpoint = server_config['Endpoint']
     namespace = server_config['Namespace']
     ssl = server_config['SSL'].lower() == 'true'
     
-   
-    
-    # Set up wsk properties
-    subprocess.run(f"wsk property set --apihost {api_host}", shell=True)
-    
-    # Set authentication using API key from environment variable
+    # Get API key and split it
     ow_api_key = os.getenv('OW_API_KEY')
-    if ow_api_key:
-        subprocess.run(f"wsk property set --auth {ow_api_key}", shell=True)
-        print("Using OpenWhisk with API key authentication")
-    else:
-        print("Using OpenWhisk without authentication")
+    if not ow_api_key:
+        print("Error: OW_API_KEY environment variable not set")
+        sys.exit(1)
     
-    subprocess.run("wsk property set --insecure", shell=True)
+    api_key_parts = ow_api_key.split(':')
+    if len(api_key_parts) != 2:
+        print("Error: OW_API_KEY should be in format 'username:password'")
+        sys.exit(1)
     
-    # Set environment variable to handle certificate issue
-    env = os.environ.copy()
-    env['GODEBUG'] = 'x509ignoreCN=0'
+    # Add protocol to endpoint if not present
+    if not endpoint.startswith(('http://', 'https://')):
+        protocol = 'https://' if ssl else 'http://'
+        endpoint = protocol + endpoint
     
-    # Create payload with credentials
+    # Construct URL (matching R implementation)
+    url = f"{endpoint}/api/v1/namespaces/{namespace}/actions/{function_name}?blocking=false&result=false"
+    
+    # Create payload (matching R implementation)
     payload = build_faasr_payload(workflow_data)
     
-    # Use function name directly (no prefix)
-    action_name = function_name
+    # Set headers
+    headers = {
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
     
     try:
-        print(f"Invoking OpenWhisk action: {action_name}")
+        print(f"Invoking OpenWhisk action: {function_name}")
         print(f"Debug: Using namespace: {namespace}")
+        print(f"Debug: URL: {url}")
         
-        # Check if action exists first
-        check_cmd = f"wsk action get {action_name} --insecure >/dev/null 2>&1"
-        exists = subprocess.run(check_cmd, shell=True, env=env).returncode == 0
-        if not exists:
-            print(f"Warning: Action {action_name} not found in namespace {namespace}")
-            print("Available actions in current namespace:")
-            subprocess.run("wsk action list --insecure", shell=True, env=env)
+        # Make REST API call (matching R implementation)
+        response = requests.post(
+            url=url,
+            auth=(api_key_parts[0], api_key_parts[1]),  # HTTP Basic Auth
+            headers=headers,
+            json=payload,
+            verify=ssl  # SSL verification based on config
+        )
         
-        # Invoke the action synchronously with payload
-        cmd = f"wsk action invoke {action_name} --blocking --insecure --param payload '{json.dumps(payload)}'"
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
-        
-        if result.returncode == 0:
-            print(f"✓ Successfully invoked OpenWhisk action: {action_name}")
-            if result.stdout.strip():
-                print(f"Action response: {result.stdout}")
-            else:
-                print("Action completed successfully (no response output)")
+        if response.status_code in [200, 202]:
+            print(f"✓ Successfully invoked OpenWhisk action: {function_name}")
+            if response.text:
+                print(f"Response: {response.text}")
         else:
-            print(f"✗ Error invoking OpenWhisk action: {result.stderr}")
+            print(f"✗ Error invoking OpenWhisk action: {response.status_code} - {response.text}")
             sys.exit(1)
             
     except Exception as e:
