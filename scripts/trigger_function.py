@@ -249,7 +249,52 @@ def trigger_lambda(workflow_data, function_name):
         sys.exit(1)
 
 def trigger_openwhisk(workflow_data, function_name):
-    pass
+    """Trigger an OpenWhisk action."""
+    # Get function data
+    func_data = workflow_data['FunctionList'][function_name]
+    server_name = func_data['FaaSServer']
+    server_config = workflow_data['ComputeServers'][server_name]
+    
+    # Get OpenWhisk credentials from server config
+    api_host = server_config['Endpoint']
+    namespace = server_config['Namespace']
+    ssl = server_config['SSL'].lower() == 'true'
+    
+    # Set up wsk properties
+    subprocess.run(f"wsk property set --apihost {api_host}", shell=True)
+    print("Using OpenWhisk without authentication")
+    subprocess.run("wsk property set --insecure", shell=True)
+    
+    # Set environment variable to handle certificate issue
+    env = os.environ.copy()
+    env['GODEBUG'] = 'x509ignoreCN=0'
+    
+    # Create payload with credentials
+    payload = build_faasr_payload(workflow_data)
+    
+    # Use function name directly (no prefix)
+    action_name = function_name
+    
+    try:
+        print(f"Invoking OpenWhisk action: {action_name}")
+        
+        # Invoke the action synchronously with payload
+        cmd = f"wsk action invoke {action_name} --result --insecure --param payload '{json.dumps(payload)}'"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
+        
+        if result.returncode == 0:
+            print(f"✓ Successfully invoked OpenWhisk action: {action_name}")
+            if result.stdout.strip():
+                print(f"Action response: {result.stdout}")
+            else:
+                print("Action completed successfully (no response output)")
+        else:
+            print(f"✗ Error invoking OpenWhisk action: {result.stderr}")
+            sys.exit(1)
+            
+    except Exception as e:
+        print(f"✗ Error triggering OpenWhisk action: {str(e)}")
+        sys.exit(1)
 
 def main():
     args = parse_arguments()
