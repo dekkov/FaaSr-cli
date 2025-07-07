@@ -44,13 +44,9 @@ jobs:
         env:
           OW_API_KEY: ${{ secrets.OW_API_KEY }}
         run: |
-          # Set common wsk properties
-          wsk property set --insecure
           # Set environment variable to handle certificate issues
           echo "GODEBUG=x509ignoreCN=0" >> $GITHUB_ENV
-          # Note: API host and auth will be set by the Python script from the workflow file
-          # Verify configuration
-          wsk property get
+          # Note: All wsk properties (API host, auth, insecure) will be set by the Python script
 
       - name: Trigger function
         env:
