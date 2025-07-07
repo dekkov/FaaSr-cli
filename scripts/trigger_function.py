@@ -298,7 +298,7 @@ def trigger_openwhisk(workflow_data, function_name):
             subprocess.run("wsk action list --insecure", shell=True, env=env)
         
         # Invoke the action synchronously with payload
-        cmd = f"wsk action invoke {action_name} --result --insecure --param payload '{json.dumps(payload)}'"
+        cmd = f"wsk action invoke {action_name} --blocking --insecure --param payload '{json.dumps(payload)}'"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
         
         if result.returncode == 0:
