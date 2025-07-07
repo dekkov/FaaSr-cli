@@ -2,7 +2,7 @@
 "ComputeServers": {
         "My_OW_Account": {
             "FaaSType": "OpenWhisk",
-            "Namespace": "guest",
+            "Namespace": "hoang",
             "SSL": "False",
             "Endpoint": "ow.faasr.io:31002"
         }

@@ -402,7 +402,6 @@ def deploy_to_ow(workflow_data):
     
     # Set up wsk properties
     subprocess.run(f"wsk property set --apihost {api_host}", shell=True)
-    subprocess.run(f"wsk property set --namespace {namespace}", shell=True)
     
     # Set authentication using API key from environment variable
     ow_api_key = os.getenv('OW_API_KEY')
@@ -427,15 +426,15 @@ def deploy_to_ow(workflow_data):
             # Create or update OpenWhisk action using wsk CLI
             try:
                 # First check if action exists (add --insecure flag)
-                check_cmd = f"wsk action get {func_name} --insecure >/dev/null 2>&1"
+                check_cmd = f"wsk action get {func_name} --namespace {namespace} --insecure >/dev/null 2>&1"
                 exists = subprocess.run(check_cmd, shell=True, env=env).returncode == 0
                 
                 if exists:
                     # Update existing action (add --insecure flag)
-                    cmd = f"wsk action update {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                    cmd = f"wsk action update {func_name} --namespace {namespace} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 else:
                     # Create new action (add --insecure flag)
-                    cmd = f"wsk action create {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                    cmd = f"wsk action create {func_name} --namespace {namespace} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
                 
