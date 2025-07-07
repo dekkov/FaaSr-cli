@@ -264,6 +264,7 @@ def trigger_openwhisk(workflow_data, function_name):
     
     # Set up wsk properties
     subprocess.run(f"wsk property set --apihost {api_host}", shell=True)
+    subprocess.run(f"wsk property set --namespace {namespace}", shell=True)
     
     # Set authentication using API key from environment variable
     ow_api_key = os.getenv('OW_API_KEY')
@@ -287,6 +288,15 @@ def trigger_openwhisk(workflow_data, function_name):
     
     try:
         print(f"Invoking OpenWhisk action: {action_name}")
+        print(f"Debug: Using namespace: {namespace}")
+        
+        # Check if action exists first
+        check_cmd = f"wsk action get {action_name} --insecure >/dev/null 2>&1"
+        exists = subprocess.run(check_cmd, shell=True, env=env).returncode == 0
+        if not exists:
+            print(f"Warning: Action {action_name} not found in namespace {namespace}")
+            print("Available actions in current namespace:")
+            subprocess.run("wsk action list --insecure", shell=True, env=env)
         
         # Invoke the action synchronously with payload
         cmd = f"wsk action invoke {action_name} --result --insecure --param payload '{json.dumps(payload)}'"
