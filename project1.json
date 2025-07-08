@@ -77,9 +77,7 @@
     },
     "ActionContainers": {
         "start_github": "ghcr.io/faasr/github-actions-tidyverse",
-        "start_lambda": "ghcr.io/faasr/github-actions-tidyverse",
-        "sum_github": "ghcr.io/faasr/github-actions-tidyverse",
-        "sum_lambda": "ghcr.io/faasr/github-actions-tidyverse"
+        "sum_github": "ghcr.io/faasr/github-actions-tidyverse"
     },
     "FunctionGitRepo": {
         "create_sample_data": "FaaSr/FaaSr-tutorial",
