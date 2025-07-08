@@ -284,6 +284,11 @@ def trigger_openwhisk(workflow_data, function_name):
   
     payload = build_faasr_payload(workflow_data)
     
+    # Debug: print the payload being sent to OpenWhisk
+    print("\n===== OpenWhisk Payload Debug =====")
+    print(json.dumps(payload, indent=2))
+    print("===== End Payload Debug =====\n")
+    
     # Set headers
     headers = {
         'accept': 'application/json',
