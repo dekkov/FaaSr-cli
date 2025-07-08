@@ -40,65 +40,47 @@ def get_credentials():
     }
 
 def build_faasr_payload(workflow_data, mask_secrets_for_github=False):
-    # Start with credentials at the top
-    # payload = get_credentials().copy()
+    # Start with credentials at the top (matching R deployment style)
+    payload = get_credentials().copy()
 
     # Add workflow data (excluding _workflow_file)
     workflow_copy = workflow_data.copy()
     if '_workflow_file' in workflow_copy:
         del workflow_copy['_workflow_file']
-    # payload.update(workflow_copy)
-    payload = workflow_copy
+    payload.update(workflow_copy)
     
     # Get environment credentials
     credentials = get_credentials()
     
-    # Replace placeholder values in ComputeServers with actual credentials based on FaaSType
-    if 'ComputeServers' in payload:
-        for server_key, server_config in payload['ComputeServers'].items():
-            faas_type = server_config.get('FaaSType', '')
-            
-            if mask_secrets_for_github:
-                # Mask secrets for GitHub Actions (existing logic)
-                if faas_type == 'GitHubActions':
-                    server_config['Token'] = f"{server_key}_TOKEN"
-                elif faas_type == 'Lambda':
-                    server_config['AccessKey'] = f"{server_key}_ACCESS_KEY"
-                    server_config['SecretKey'] = f"{server_key}_SECRET_KEY"
-                elif faas_type == 'OpenWhisk':
-                    server_config['API.key'] = f"{server_key}_API_KEY"
-            else:
-                # Replace placeholder values with actual credentials
-                if faas_type == 'Lambda':
-                    # Replace Lambda AccessKey/SecretKey placeholders
-                    if credentials['My_Lambda_Account_ACCESS_KEY']:
-                        server_config['AccessKey'] = credentials['My_Lambda_Account_ACCESS_KEY']
-                    if credentials['My_Lambda_Account_SECRET_KEY']:
-                        server_config['SecretKey'] = credentials['My_Lambda_Account_SECRET_KEY']
-                elif faas_type == 'GitHubActions':
-                    if credentials['My_GitHub_Account_TOKEN']:
-                        server_config['Token'] = credentials['My_GitHub_Account_TOKEN']
-                elif faas_type == 'OpenWhisk':
-                    # Always set the API.key field for OpenWhisk
-                    if credentials['My_OW_Account_API_KEY']:
-                        server_config['API.key'] = ""
-                        # server_config['API.key'] = credentials['My_OW_Account_API_KEY']
-
-    # Replace placeholder values in DataStores with actual credentials
-    if 'DataStores' in payload:
-        for store_key, store_config in payload['DataStores'].items():
-            if mask_secrets_for_github:
-                # Mask secrets for GitHub Actions (existing logic)
-                store_config['AccessKey'] = f"{store_key}_ACCESS_KEY"
-                store_config['SecretKey'] = f"{store_key}_SECRET_KEY"
-            else:
-                # Replace placeholder values with actual credentials
-                if 'AccessKey' in store_config and store_config['AccessKey'] == f"{store_key}_ACCESS_KEY":
-                    if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_ACCESS_KEY']:
-                        store_config['AccessKey'] = credentials['My_Minio_Bucket_ACCESS_KEY']
-                if 'SecretKey' in store_config and store_config['SecretKey'] == f"{store_key}_SECRET_KEY":
-                    if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_SECRET_KEY']:
-                        store_config['SecretKey'] = credentials['My_Minio_Bucket_SECRET_KEY']
+    # Apply faasr_replace_values logic (R equivalent)
+    def replace_values_recursive(obj, cred, skip_keys=None):
+        if skip_keys is None:
+            skip_keys = ['FunctionList', 'FunctionGitRepo', 'FunctionCRANPackage', 'FunctionGitHubPackage']
+        
+        if isinstance(obj, dict):
+            result = {}
+            for key, value in obj.items():
+                if key in skip_keys:
+                    result[key] = value  # Don't process these sections
+                elif isinstance(value, (dict, list)):
+                    result[key] = replace_values_recursive(value, cred, skip_keys)
+                else:
+                    # If the value exists in credentials, replace it
+                    if isinstance(value, str) and value in cred:
+                        if mask_secrets_for_github:
+                            result[key] = value  # Keep placeholder for GitHub
+                        else:
+                            result[key] = cred[value]  # Replace with actual credential
+                    else:
+                        result[key] = value
+            return result
+        elif isinstance(obj, list):
+            return [replace_values_recursive(item, cred, skip_keys) for item in obj]
+        else:
+            return obj
+    
+    # Apply the replacement logic
+    payload = replace_values_recursive(payload, credentials)
     
     return payload
 
