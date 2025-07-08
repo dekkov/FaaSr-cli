@@ -41,13 +41,14 @@ def get_credentials():
 
 def build_faasr_payload(workflow_data, mask_secrets_for_github=False):
     # Start with credentials at the top (matching R deployment style)
-    payload = get_credentials().copy()
+    # payload = get_credentials().copy()
 
     # Add workflow data (excluding _workflow_file)
     workflow_copy = workflow_data.copy()
     if '_workflow_file' in workflow_copy:
         del workflow_copy['_workflow_file']
-    payload.update(workflow_copy)
+    # payload.update(workflow_copy)
+    payload = workflow_copy
     
     # Get environment credentials
     credentials = get_credentials()
