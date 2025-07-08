@@ -70,22 +70,17 @@ def build_faasr_payload(workflow_data, mask_secrets_for_github=False):
                 # Replace placeholder values with actual credentials
                 if faas_type == 'Lambda':
                     # Replace Lambda AccessKey/SecretKey placeholders
-                    if 'AccessKey' in server_config and server_config['AccessKey'] == f"{server_key}_ACCESS_KEY":
-                        if credentials['My_Lambda_Account_ACCESS_KEY']:
-                            server_config['AccessKey'] = credentials['My_Lambda_Account_ACCESS_KEY']
-                    if 'SecretKey' in server_config and server_config['SecretKey'] == f"{server_key}_SECRET_KEY":
-                        if credentials['My_Lambda_Account_SECRET_KEY']:
-                            server_config['SecretKey'] = credentials['My_Lambda_Account_SECRET_KEY']
+                    if credentials['My_Lambda_Account_ACCESS_KEY']:
+                        server_config['AccessKey'] = credentials['My_Lambda_Account_ACCESS_KEY']
+                    if credentials['My_Lambda_Account_SECRET_KEY']:
+                        server_config['SecretKey'] = credentials['My_Lambda_Account_SECRET_KEY']
                 elif faas_type == 'GitHubActions':
-                    # Replace GitHub Token placeholder
-                    if 'Token' in server_config and server_config['Token'] == f"{server_key}_TOKEN":
-                        if credentials['My_GitHub_Account_TOKEN']:
-                            server_config['Token'] = credentials['My_GitHub_Account_TOKEN']
+                    if credentials['My_GitHub_Account_TOKEN']:
+                        server_config['Token'] = credentials['My_GitHub_Account_TOKEN']
                 elif faas_type == 'OpenWhisk':
-                    # Replace OpenWhisk API.key placeholder
-                    if 'API.key' in server_config and server_config['API.key'] == f"{server_key}_API_KEY":
-                        if credentials['My_OW_Account_API_KEY']:
-                            server_config['API.key'] = credentials['My_OW_Account_API_KEY']
+                    # Always set the API.key field for OpenWhisk
+                    if credentials['My_OW_Account_API_KEY']:
+                        server_config['API.key'] = credentials['My_OW_Account_API_KEY'].split(':')[1]
 
     # Replace placeholder values in DataStores with actual credentials
     if 'DataStores' in payload:
