@@ -90,13 +90,10 @@ def build_faasr_payload(workflow_data, mask_secrets_for_github=False):
                 store_config['AccessKey'] = f"{store_key}_ACCESS_KEY"
                 store_config['SecretKey'] = f"{store_key}_SECRET_KEY"
             else:
-                # Replace placeholder values with actual credentials
-                if 'AccessKey' in store_config and store_config['AccessKey'] == f"{store_key}_ACCESS_KEY":
-                    if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_ACCESS_KEY']:
-                        store_config['AccessKey'] = credentials['My_Minio_Bucket_ACCESS_KEY']
-                if 'SecretKey' in store_config and store_config['SecretKey'] == f"{store_key}_SECRET_KEY":
-                    if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_SECRET_KEY']:
-                        store_config['SecretKey'] = credentials['My_Minio_Bucket_SECRET_KEY']
+                if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_ACCESS_KEY']:
+                    store_config['AccessKey'] = credentials['My_Minio_Bucket_ACCESS_KEY']
+                if store_key == 'My_Minio_Bucket' and credentials['My_Minio_Bucket_SECRET_KEY']:
+                    store_config['SecretKey'] = credentials['My_Minio_Bucket_SECRET_KEY']
     
     return payload
 
