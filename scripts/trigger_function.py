@@ -81,7 +81,8 @@ def build_faasr_payload(workflow_data, mask_secrets_for_github=False):
                 elif faas_type == 'OpenWhisk':
                     # Always set the API.key field for OpenWhisk
                     if credentials['My_OW_Account_API_KEY']:
-                        server_config['API.key'] = credentials['My_OW_Account_API_KEY'].split(':')[0]
+                        server_config['API.key'] = ""
+                        # server_config['API.key'] = credentials['My_OW_Account_API_KEY']
 
     # Replace placeholder values in DataStores with actual credentials
     if 'DataStores' in payload:
