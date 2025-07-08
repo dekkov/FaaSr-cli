@@ -43,8 +43,8 @@
             "FaaSServer": "My_Lambda_Account",
             "Arguments": {
                 "folder": "tutorial",
-                "output1": "sample1.csv",
-                "output2": "sample2.csv"
+                "output1": "sample1_lambda.csv",
+                "output2": "sample2_lambda.csv"
             },
             "InvokeNext": "sum_lambda"
         },
@@ -66,8 +66,8 @@
             "FaaSServer": "My_Lambda_Account",
             "Arguments": {
                 "folder": "tutorial",
-                "input1": "sample1.csv",
-                "input2": "sample2.csv",
+                "input1": "sample1_lambda.csv",
+                "input2": "sample2_lambda.csv",
                 "output": "sum.csv"
             },
             "InvokeNext": [
