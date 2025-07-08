@@ -4,7 +4,8 @@
             "FaaSType": "OpenWhisk",
             "Namespace": "guest",
             "SSL": "False",
-            "Endpoint": "ow.faasr.io:31002"
+            "Endpoint": "ow.faasr.io:31002",
+            "API.key": "My_OW_Account_API_KEY"
         }
     },
     "DataStores": {
