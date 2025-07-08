@@ -17,7 +17,7 @@
     "DataStores": {
         "My_Minio_Bucket": {
             "Endpoint": "https://play.min.io",
-            "Bucket": "faasr",
+            "Bucket": "hoang",
             "Region": "us-east-1",
             "Writable": "TRUE",
             "AccessKey": "My_Minio_Bucket_ACCESS_KEY",
@@ -29,7 +29,7 @@
             "FunctionName": "create_sample_data",
             "FaaSServer": "My_GitHub_Account",
             "Arguments": {
-                "folder": "tutorial",
+                "folder": "project1",
                 "output1": "sample1.csv",
                 "output2": "sample2.csv"
             },
@@ -42,7 +42,7 @@
             "FunctionName": "create_sample_data",
             "FaaSServer": "My_Lambda_Account",
             "Arguments": {
-                "folder": "tutorial",
+                "folder": "project1",
                 "output1": "sample1_lambda.csv",
                 "output2": "sample2_lambda.csv"
             },
@@ -52,7 +52,7 @@
             "FunctionName": "compute_sum",
             "FaaSServer": "My_GitHub_Account",
             "Arguments": {
-                "folder": "tutorial",
+                "folder": "project1",
                 "input1": "sample1.csv",
                 "input2": "sample2.csv",
                 "output": "sum.csv"
@@ -65,7 +65,7 @@
             "FunctionName": "compute_sum",
             "FaaSServer": "My_Lambda_Account",
             "Arguments": {
-                "folder": "tutorial",
+                "folder": "project1",
                 "input1": "sample1_lambda.csv",
                 "input2": "sample2_lambda.csv",
                 "output": "sum.csv"
