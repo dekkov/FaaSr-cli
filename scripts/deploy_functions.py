@@ -215,7 +215,7 @@ jobs:
 """
             
             # Create or update the workflow file
-            workflow_path = f".github/workflows/{func_name}.yml"
+            workflow_path = f".github/workflows/{json_prefix}_{func_name}.yml"
             try:
                 # Try to get the file first
                 contents = repo.get_contents(workflow_path)
@@ -291,7 +291,7 @@ def deploy_to_aws(workflow_data):
     for func_name, func_data in lambda_functions.items():
         try:
             actual_func_name = func_data['FunctionName']
-            
+            register_name = f"{json_prefix}_{func_name}"
             # Check payload size before deployment
             payload_size = len(secret_payload.encode('utf-8'))
             if payload_size > 4000:  # Lambda env var limit is ~4KB
@@ -306,7 +306,7 @@ def deploy_to_aws(workflow_data):
             # Create or update Lambda function
             try:
                 lambda_client.create_function(
-                    FunctionName=func_name,
+                    FunctionName=register_name,
                     PackageType='Image',
                     Code={'ImageUri': '145342739029.dkr.ecr.us-east-1.amazonaws.com/aws-lambda-tidyverse:latest'},
                     Role=role_arn,
@@ -318,17 +318,17 @@ def deploy_to_aws(workflow_data):
             except lambda_client.exceptions.ResourceConflictException:
                 # Update existing function
                 lambda_client.update_function_code(
-                    FunctionName=func_name,
+                    FunctionName=register_name,
                     ImageUri='145342739029.dkr.ecr.us-east-1.amazonaws.com/aws-lambda-tidyverse:latest'
                 )
                 
                 # Wait for the function update to complete
-                print(f"Waiting for {func_name} code update to complete...")
+                print(f"Waiting for {register_name} code update to complete...")
                 max_attempts = 60  # Wait up to 5 minutes
                 attempt = 0
                 while attempt < max_attempts:
                     try:
-                        response = lambda_client.get_function(FunctionName=func_name)
+                        response = lambda_client.get_function(FunctionName=register_name)
                         state = response['Configuration']['State']
                         last_update_status = response['Configuration']['LastUpdateStatus']
                         
@@ -345,18 +345,18 @@ def deploy_to_aws(workflow_data):
                         attempt += 1
                 
                 if attempt >= max_attempts:
-                    print(f"Timeout waiting for {func_name} update to complete")
+                    print(f"Timeout waiting for {register_name} update to complete")
                     sys.exit(1)
                 
                 # Now update environment variables
                 lambda_client.update_function_configuration(
-                    FunctionName=func_name,
+                    FunctionName=register_name,
                     Environment={'Variables': environment_vars}
                 )
-                print(f"Successfully updated {func_name} on AWS Lambda")
+                print(f"Successfully updated {register_name} on AWS Lambda")
             
         except Exception as e:
-            print(f"Error deploying {func_name} to AWS: {str(e)}")
+            print(f"Error deploying {register_name} to AWS: {str(e)}")
             # Print additional debugging information
             if "RequestEntityTooLargeException" in str(e):
                 print(f"Payload too large. SECRET_PAYLOAD size: {len(secret_payload)} bytes")
@@ -422,33 +422,33 @@ def deploy_to_ow(workflow_data):
     for func_name, func_data in ow_functions.items():
         try:
             actual_func_name = func_data['FunctionName']
-            
+            register_name = f"{json_prefix}_{func_name}"
             # Create or update OpenWhisk action using wsk CLI
             try:
                 # First check if action exists (add --insecure flag)
-                check_cmd = f"wsk action get {func_name} --insecure >/dev/null 2>&1"
+                check_cmd = f"wsk action get {register_name} --insecure >/dev/null 2>&1"
                 exists = subprocess.run(check_cmd, shell=True, env=env).returncode == 0
                 
                 if exists:
                     # Update existing action (add --insecure flag)
-                    cmd = f"wsk action update {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                    cmd = f"wsk action update {register_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 else:
                     # Create new action (add --insecure flag)
-                    cmd = f"wsk action create {func_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
+                    cmd = f"wsk action create {register_name} --docker {workflow_data['ActionContainers'][func_name]} --insecure"
                 
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
                 
                 if result.returncode != 0:
                     raise Exception(f"Failed to {'update' if exists else 'create'} action: {result.stderr}")
                 
-                print(f"Successfully deployed {func_name} to OpenWhisk")
+                print(f"Successfully deployed {register_name} to OpenWhisk")
                 
             except Exception as e:
-                print(f"Error deploying {func_name} to OpenWhisk: {str(e)}")
+                print(f"Error deploying {register_name} to OpenWhisk: {str(e)}")
                 sys.exit(1)
                 
         except Exception as e:
-            print(f"Error processing {func_name}: {str(e)}")
+            print(f"Error processing {register_name}: {str(e)}")
             sys.exit(1)
 
 def main():
