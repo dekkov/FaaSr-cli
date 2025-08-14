@@ -262,6 +262,9 @@ jobs:
         sys.exit(1)
 
 def deploy_to_aws(workflow_data):
+
+    json_prefix = os.path.splitext(os.path.basename(workflow_data['_workflow_file']))[0]
+    
     # Get AWS credentials
     aws_access_key, aws_secret_key, aws_region, role_arn = get_aws_credentials()
     
@@ -302,7 +305,8 @@ def deploy_to_aws(workflow_data):
             environment_vars = {
                 'SECRET_PAYLOAD': secret_payload
             }
-            
+    
+
             # Create or update Lambda function
             try:
                 lambda_client.create_function(
